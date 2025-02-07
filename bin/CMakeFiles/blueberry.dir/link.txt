@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/blueberry.dir/link.d CMakeFiles/blueberry.dir/multiThread.cpp.o CMakeFiles/blueberry.dir/read.cpp.o CMakeFiles/blueberry.dir/simple.cpp.o CMakeFiles/blueberry.dir/singleThread.cpp.o -o blueberry
