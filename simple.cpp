@@ -33,11 +33,7 @@ int main() {
 	int mat2[R2][C2] = { { 1, 1, 1 }, { 2, 2, 2 } };
 
 	if (C1 != R2) {
-		cout << "The number of columns in Matrix-1 must "
-				"be equal to the number of rows in "
-				"Matrix-2\n";
-		cout << "Please update MACROs according to your "
-				"array dimension in #define section\n";
+    cout << "Matrix 1 columns doens't match Matrix 2 rows.\n";
 		exit(EXIT_FAILURE);
 	}
 
