@@ -12,7 +12,7 @@ int main() {
     std::uniform_int_distribution<> dis(1, 100);
 
     // Open file for writing
-    std::ofstream file("random_numbers.csv");
+    std::ofstream file("matrixMult/random_numbers.csv");
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file!" << std::endl;
         return 1;

@@ -1,3 +1,0 @@
-/home/jello/Study/Parallel/blueberry/bin/CMakeFiles/blueberry.dir
-/home/jello/Study/Parallel/blueberry/bin/CMakeFiles/edit_cache.dir
-/home/jello/Study/Parallel/blueberry/bin/CMakeFiles/rebuild_cache.dir

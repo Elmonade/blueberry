@@ -1,22 +1,34 @@
 CFLAGS = -Wall -Wextra
 CC = g++
-VPATH = src:build
+VPATH = src:matrixMult/build
 
-build/bin/make : singleThread.o read.o
-	mkdir build/bin
-	$(CC) $(CFLAGS) $? -o $@
+matrixMult/build/bin/matrix_mult : matrixMult/singleThread.o matrixMult/read.o
+	mkdir -p matrixMult/build/bin
+	$(CC) $(CFLAGS) $^ -o $@
 
-build/singleThread.o : singleThread.cpp
-	mkdir build
+matrixMult/build/bin/random_gen : matrixMult/randomNumberGenerator.o
+	mkdir -p matrixMult/build/bin
+	$(CC) $(CFLAGS) $^ -o $@
+
+matrixMult/build/singleThread.o : matrixMult/singleThread.cpp
+	mkdir -p matrixMult/build
 	$(CC) $(CFLAGS) -c $? -o $@
 
-build/read.o : read.cpp
+matrixMult/build/read.o : matrixMult/read.cpp
 	$(CC) $(CFLAGS) -c $? -o $@
 
-.PHONY = clean
+matrixMult/build/randomNumberGenerator.o : matrixMult/randomNumberGenerator.cpp
+	$(CC) $(CFLAGS) -c $? -o $@
+
+.PHONY = clean run generate
+
 clean :
-	rm -rvf build
+	rm -rvf matrixMult/build
 
-.PHONY = run
-run: make
-	./build/bin/make
+run: matrixMult/build/bin/matrix_mult
+	./matrixMult/build/bin/matrix_mult
+
+generate: matrixMult/build/bin/random_gen
+	./matrixMult/build/bin/random_gen
+
+all: matrixMult/build/bin/matrix_mult matrixMult/build/bin/random_gen

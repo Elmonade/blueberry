@@ -4,7 +4,8 @@ project(blueberry)
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(blueberry
-    multiThread.cpp
-    read.cpp
-    simple.cpp
-    singleThread.cpp)
+    matrixMult/multiThread.cpp
+    matrixMult/read.cpp
+    matrixMult/simple.cpp
+    matrixMult/singleThread.cpp
+    matrixMult/read.h)

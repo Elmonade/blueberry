@@ -6,10 +6,9 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-// Define larger matrix dimensions for the 60000 numbers
-#define R1 200  // 200 x 300 = 60000 for first matrix
+#define R1 200
 #define C1 300
-#define R2 300  // 300 x 200 = 60000 for second matrix
+#define R2 300
 #define C2 200
 
 void mulMat(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
@@ -24,18 +23,16 @@ void mulMat(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2], int (&result
 }
 
 int main() {
-    // Arrays to store the matrices
     int mat1[R1 * C1];
     int mat2[R2 * C2];
     int result[R1 * C2];
 
-    // Read first 60000 numbers for mat1
-    if (readIntegersFromCSV("random_numbers.csv", mat1, R1 * C1) != R1 * C1) {
+    if (readIntegersFromCSV("matrixMult/random_numbers.csv", mat1, R1 * C1) != R1 * C1) {
         cout << "Error reading first matrix\n";
         return 1;
     }
 
-    if (readIntegersFromCSV("random_numbers.csv", mat2, R2 * C2) != R1 * C1) {
+    if (readIntegersFromCSV("matrixMult/random_numbers.csv", mat2, R2 * C2) != R1 * C1) {
         cout << "Error reading first matrix\n";
         return 1;
     }
@@ -45,16 +42,13 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Perform multiplication and measure time
     const auto t1 = high_resolution_clock::now();
     mulMat(mat1, mat2, result);
     const auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
 
-    // Print execution time
     std::cout << "Time = " << ms_double.count() << "ms\n";
 
-    // Print first few elements of result matrix to verify
     cout << "First few elements of result matrix:\n";
     for (int i = 0; i < 5; i++) {
         cout << result[i] << " ";
