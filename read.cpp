@@ -4,6 +4,9 @@
 #include <string>
 #include "read.h"
 
+// size = 8MiB(L3 Cache) / Integer
+// 2097152 = 67108864 / 32
+
 int readIntegersFromCSV(const std::string& filename, int arr[], int num_integers) {
     std::ifstream file(filename);
 
@@ -12,10 +15,11 @@ int readIntegersFromCSV(const std::string& filename, int arr[], int num_integers
         return 0;
     }
 
-    std::string line, cell;
+    std::string line;
 
     // Read the first line
     if (std::getline(file, line)) {
+        std::string cell;
         std::istringstream ss(line);
 
         // Read specified number of integers
