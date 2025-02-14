@@ -8,10 +8,10 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 2
-#define C1 3
-#define R2 3
-#define C2 2
+#define R1 3
+#define C1 2
+#define R2 2
+#define C2 3
 
 //Clean memory per value
 void mulMat(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
@@ -39,9 +39,27 @@ void mulMatWithCleanMemory(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2
     }
 }
 
+/*
+* TODO: On tranposed matrix
+*/
+void mulMatWithCleanMemoryOnTransposed(const int (&mat1T)[R1 * C1], const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
+  memset(result, 0, sizeof(int) * R1 * C2);  // Initialize all at once
+  for (int i = 0; i < R1; i++) {
+      for (int j = 0; j < C1; j++) {
+          for (int k = 0; k < C1; k++) {
+              result[i * C1 + j] += mat1T[k * C2 + j] * mat2[k * C2 + j];
+          }
+      }
+  }
+}
+
 void transpose(const int(&mat1)[R1*C1], int(&mat1T)[R1*C1]) {
 
   cout << "\n\n Before transposing" << R1 <<"x"<< C1<<"\n";
+
+  for (int i = 0; i < C1*R1; i++) {
+    cout << mat1[i] << "\n";
+  }
 
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C1; j++) {
@@ -68,6 +86,12 @@ void transpose(const int(&mat1)[R1*C1], int(&mat1T)[R1*C1]) {
 
 
   cout << "\n\n After transposing\n";
+
+  for (int i = 0; i < C1*R1; i++) {
+    cout << mat1T[i] << "\n";
+  }
+
+
   for (int i = 0; i < C1; i++) {
     for (int j = 0; j < R1; j++) {
       cout << mat1T[R1*i + j] << "\t";
@@ -116,7 +140,7 @@ int main() {
 
     transpose(mat1, mat1T);
     t1 = high_resolution_clock::now();
-    mulMatWithCleanMemory(mat1T, mat2, result);
+    mulMatWithCleanMemoryOnTransposed(mat1T, mat2, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
