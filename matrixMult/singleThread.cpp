@@ -60,6 +60,29 @@ void mulMatWithCleanMemoryOnTransposed(const int (&mat1)[R1 * C1],
   }
 }
 
+void mulMatBlocked(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
+                   int (&result)[R1 * C2]) {
+  const int BLOCK_SIZE = 64; // Cache size
+  memset(result, 0, sizeof(int) * R1 * C2);
+
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {   // Block row of mat1
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) { // Block column of mat2T
+      for (int k0 = 0; k0 < C1;
+           k0 += BLOCK_SIZE) { // Block for shared dimension
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            int sum = result[i * C2 + j];
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+
 void transpose(const int (&ogMat)[R2 * C2], int (&tpMat)[R2 * C2]) {
   memset(tpMat, 0, sizeof(int) * R2 * C2);
   int cnt = 0;
@@ -77,12 +100,14 @@ int main() {
   int result[R1 * C2];
   int transposed[R2 * C2];
 
-  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat1, R1 * C1) != R1 * C1) {
+  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat1, R1 * C1) !=
+      R1 * C1) {
     cout << "Error reading first matrix\n";
     return 1;
   }
 
-  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat2, R2 * C2) != R2 * C2) {
+  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat2, R2 * C2) !=
+      R2 * C2) {
     cout << "Error reading first matrix\n";
     return 1;
   }
@@ -107,6 +132,18 @@ int main() {
   transpose(mat2, transposed);
   t1 = high_resolution_clock::now();
   mulMatWithCleanMemoryOnTransposed(mat1, transposed, result);
+  t2 = high_resolution_clock::now();
+  ms_double = t2 - t1;
+
+  std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
+
+  for (int i = 0; i < 5; i++) {
+    cout << result[i] << " ";
+  }
+  cout << "\n";
+
+  t1 = high_resolution_clock::now();
+  mulMatBlocked(mat1, transposed, result);
   t2 = high_resolution_clock::now();
   ms_double = t2 - t1;
 

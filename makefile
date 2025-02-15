@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -march=native
 CC = g++
 VPATH = src:matrixMult/build
 
