@@ -1,158 +1,121 @@
-#include <chrono>
-#include <iostream>
 #include "read.h"
+#include <chrono>
 #include <cstring>
+#include <iostream>
 
 using std::cout;
 using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 3
-#define C1 2
-#define R2 2
-#define C2 3
+#define R1 512
+#define C1 1024
 
-//Clean memory per value
-void mulMat(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
-    for (int i = 0; i < R1; i++) {
-        for (int j = 0; j < C2; j++) {
-            result[i * C2 + j] = 0;
-            for (int k = 0; k < C1; k++) {
-                result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
-            }
-        }
-    }
-}
+#define R2 1024
+#define C2 512
 
-/*
-* This gives us slightly faster performance
-*/
-void mulMatWithCleanMemory(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
-    memset(result, 0, sizeof(int) * R1 * C2);  // Initialize all at once
-    for (int i = 0; i < R1; i++) {
-        for (int j = 0; j < C2; j++) {
-            for (int k = 0; k < C1; k++) {
-                result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
-            }
-        }
-    }
-}
-
-/*
-* TODO: On tranposed matrix
-*/
-void mulMatWithCleanMemoryOnTransposed(const int (&mat1T)[R1 * C1], const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
-  memset(result, 0, sizeof(int) * R1 * C2);  // Initialize all at once
+// Clean memory per value
+void mulMat(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2],
+            int (&result)[R1 * C2]) {
   for (int i = 0; i < R1; i++) {
-      for (int j = 0; j < C1; j++) {
-          for (int k = 0; k < C1; k++) {
-              result[i * C1 + j] += mat1T[k * C2 + j] * mat2[k * C2 + j];
-          }
+    for (int j = 0; j < C2; j++) {
+      result[i * C2 + j] = 0;
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
       }
+    }
   }
 }
 
-void transpose(const int(&mat1)[R1*C1], int(&mat1T)[R1*C1]) {
-
-  cout << "\n\n Before transposing" << R1 <<"x"<< C1<<"\n";
-
-  for (int i = 0; i < C1*R1; i++) {
-    cout << mat1[i] << "\n";
-  }
-
+/*
+ * This gives us slightly faster performance
+ */
+void mulMatWithCleanMemory(const int (&mat1)[R1 * C1],
+                           const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
+  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
   for (int i = 0; i < R1; i++) {
-    for (int j = 0; j < C1; j++) {
-      cout << C1*i+j<<"-"<< mat1[C1*i + j] << "\t";
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] +=
+            mat1[i * C1 + k] *
+            mat2[k * C2 + j]; // M2 is being read top-down - Transpose this.
+      }
     }
-    cout << "\n";
   }
-  cout << "\n";
+}
 
+/*
+ * TODO: On tranposed matrix
+ */
+void mulMatWithCleanMemoryOnTransposed(const int (&mat1)[R1 * C1],
+                                       const int (&mat2T)[R2 * C2],
+                                       int (&result)[R1 * C2]) {
+  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
+  for (int i = 0; i < R1; i++) {
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+      }
+    }
+  }
+}
 
-
-  // Row -> Column
-  // 1, 2, 3, 4 -> 1, 3, 2, 4
-  memset(mat1T, 0, sizeof(int) * R1 * C2);
-  int cnt =  0;
-  for (int i = 0; i < C1; i++) {
-    for (int j = 0; j < R1; j++) {
-      int lemon = mat1[C1*j + i];
-      cout << C1*j+i << " --- "<<lemon << "\n";
-      mat1T[cnt] = lemon;
+void transpose(const int (&ogMat)[R2 * C2], int (&tpMat)[R2 * C2]) {
+  memset(tpMat, 0, sizeof(int) * R2 * C2);
+  int cnt = 0;
+  for (int i = 0; i < C2; i++) {
+    for (int j = 0; j < R2; j++) {
+      tpMat[cnt] = ogMat[C2 * j + i];
       cnt++;
     }
   }
-
-
-  cout << "\n\n After transposing\n";
-
-  for (int i = 0; i < C1*R1; i++) {
-    cout << mat1T[i] << "\n";
-  }
-
-
-  for (int i = 0; i < C1; i++) {
-    for (int j = 0; j < R1; j++) {
-      cout << mat1T[R1*i + j] << "\t";
-    }
-    cout << "\n";
-  }
-  cout << "\n";
-
 }
 
 int main() {
-    int mat1[R1 * C1];
-    int mat2[R2 * C2];
-    int result[R1 * C2];
-    int mat1T[R1 * C1];
+  int mat1[R1 * C1];
+  int mat2[R2 * C2];
+  int result[R1 * C2];
+  int transposed[R2 * C2];
 
-    if (readIntegersFromCSV("matrixMult/random_numbers.csv", mat1, R1 * C1) != R1 * C1) {
-        cout << "Error reading first matrix\n";
-        return 1;
-    }
+  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat1, R1 * C1) != R1 * C1) {
+    cout << "Error reading first matrix\n";
+    return 1;
+  }
 
-    if (readIntegersFromCSV("matrixMult/random_numbers.csv", mat2, R2 * C2) != R1 * C1) {
-        cout << "Error reading first matrix\n";
-        return 1;
-    }
+  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat2, R2 * C2) != R2 * C2) {
+    cout << "Error reading first matrix\n";
+    return 1;
+  }
 
-    if (C1 != R2) {
-        cout << "Matrix 1 columns doesn't match Matrix 2 rows.\n";
-        exit(EXIT_FAILURE);
-    }
+  if (C1 != R2) {
+    cout << "Matrix 1 columns doesn't match Matrix 2 rows.\n";
+    exit(EXIT_FAILURE);
+  }
 
-    auto t1 = high_resolution_clock::now();
-    mulMatWithCleanMemory(mat1, mat2, result);
-    auto t2 = high_resolution_clock::now();
-    duration<double, std::milli> ms_double = t2 - t1;
+  auto t1 = high_resolution_clock::now();
+  mulMatWithCleanMemory(mat1, mat2, result);
+  auto t2 = high_resolution_clock::now();
+  duration<double, std::milli> ms_double = t2 - t1;
 
-    std::cout << "Normal Time = " << ms_double.count() << "ms\n";
+  std::cout << "Normal Time = " << ms_double.count() << "ms\n";
 
-    cout << "First few elements of result matrix:\n";
-    for (int i = 0; i < 5; i++) {
-        cout << result[i] << " ";
-    }
-    cout << "...\n";
+  for (int i = 0; i < 5; i++) {
+    cout << result[i] << " ";
+  }
+  cout << "\n";
 
+  transpose(mat2, transposed);
+  t1 = high_resolution_clock::now();
+  mulMatWithCleanMemoryOnTransposed(mat1, transposed, result);
+  t2 = high_resolution_clock::now();
+  ms_double = t2 - t1;
 
+  std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
 
-    transpose(mat1, mat1T);
-    t1 = high_resolution_clock::now();
-    mulMatWithCleanMemoryOnTransposed(mat1T, mat2, result);
-    t2 = high_resolution_clock::now();
-    ms_double = t2 - t1;
+  for (int i = 0; i < 5; i++) {
+    cout << result[i] << " ";
+  }
+  cout << "\n";
 
-    std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
-
-    cout << "First few elements of result matrix:\n";
-    for (int i = 0; i < 5; i++) {
-        cout << result[i] << " ";
-    }
-    cout << "...\n";
-
-
-
-    return 0;
+  return 0;
 }
