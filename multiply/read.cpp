@@ -49,3 +49,20 @@ int readIntegersFromCSV(const std::string &filename, int* arr, int num_integers)
     file.close();
     return total_integers;
 }
+
+void writeMatrixToCSV(const int* matrix, const char* filename, int rows, int cols) {
+    std::ofstream outFile(filename);
+    if (!outFile.is_open()) {
+        std::cerr << "Failed to open " << filename << " for writing\n";
+        return;
+    }
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            outFile << matrix[i * cols + j];
+            if (j < cols - 1) outFile << ",";
+        }
+        outFile << "\n";
+    }
+    outFile.close();
+}

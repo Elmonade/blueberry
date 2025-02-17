@@ -11,6 +11,9 @@ multiply/build/bin/random_gen : multiply/randomNumberGenerator.o
 	mkdir -p multiply/build/bin
 	$(CC) $(CFLAGS) $^ -o $@
 
+multiply/build/read.o : multiply/read.cpp
+	$(CC) $(CFLAGS) -c $? -o $@
+
 multiply/build/multiplier.o : multiply/multiplier.cpp
 	mkdir -p multiply/build
 	$(CC) $(CFLAGS) -c $? -o $@
@@ -19,8 +22,6 @@ multiply/build/singleThread.o : multiply/singleThread.cpp
 	mkdir -p multiply/build
 	$(CC) $(CFLAGS) -c $? -o $@
 
-multiply/build/read.o : multiply/read.cpp
-	$(CC) $(CFLAGS) -c $? -o $@
 
 multiply/build/randomNumberGenerator.o : multiply/randomNumberGenerator.cpp
 	$(CC) $(CFLAGS) -c $? -o $@

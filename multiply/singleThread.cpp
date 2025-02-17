@@ -1,13 +1,13 @@
 #include "read.h"
+#include <Eigen/Dense>
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <Eigen/Dense>
 
+using Eigen::MatrixXi; // Add Eigen matrix type
 using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
-using Eigen::MatrixXi;  // Add Eigen matrix type
 
 #define R1 1024
 #define C1 2048
@@ -142,14 +142,73 @@ void mulMatWithUnrolledAll(const int *mat1, const int *mat2T, int *result) {
 }
 
 void mulMatBlocked(const int *mat1, const int *mat2T, int *result) {
-  const int BLOCK_SIZE = 64; // Cache size
+  const int BLOCK_SIZE = 128; // Cache size
   memset(result, 0, sizeof(int) * R1 * C2);
 
-  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {   // Block row of mat1
-    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) { // Block column of mat2T
-      for (int k0 = 0; k0 < C1;
-           k0 += BLOCK_SIZE) { // Block for shared dimension
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+
         for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            int sum = result[i * C2 + j];
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+/*
+ * TODO: Add unrolling to the blocking
+ */
+void mulMatBlockedWithUnroll(const int *mat1, const int *mat2T, int *result) {
+  const int BLOCK_SIZE = 128; // Cache size
+  const int UNROLL = 2;       // Unrolling factor
+  memset(result, 0, sizeof(int) * R1 * C2);
+
+  // Block level loops
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        // Within each block
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1);
+             i += UNROLL) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            // Initialize sums for unrolled rows
+            int sum0 = result[i * C2 + j];
+            int sum1 = result[(i + 1) * C2 + j];
+
+            // Unrolled k-loop for better instruction-level parallelism
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
+              // First row calculations
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
+
+              // Second row calculations
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
+            }
+
+            // Handle remaining k elements if C1 is not even
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), 2);
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+            }
+
+            // Store results
+            result[i * C2 + j] = sum0;
+            result[(i + 1) * C2 + j] = sum1;
+          }
+        }
+
+        // Handle remaining rows that couldn't be unrolled
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
             int sum = result[i * C2 + j];
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
@@ -175,9 +234,9 @@ void transpose(int *ogMat, int *tpMat) {
 }
 
 double calculateGFLOPS(double milliseconds) {
-    double seconds = milliseconds / 1000.0;
-    double operations = 2.0 * R1 * C2 * C1;  // 2 operations per multiply-add
-    return (operations / seconds) / 1e9;     // Convert to GFLOPS
+  double seconds = milliseconds / 1000.0;
+  double operations = 2.0 * R1 * C2 * C1; // 2 operations per multiply-add
+  return (operations / seconds) / 1e9;    // Convert to GFLOPS
 }
 
 int main() {
@@ -217,9 +276,10 @@ int main() {
     auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
 
-    std::cout << "Normal Time = " << ms_double.count() << "ms\n";
-    std::cout << "Normal Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-
+    std::cout << "\nNormal Time = " << ms_double.count() << "ms\n";
+    std::cout << "Normal Performance = " << calculateGFLOPS(ms_double.count())
+              << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "multiply/normal.csv", R1, C2);
 
     transpose(mat2, transposed);
     t1 = high_resolution_clock::now();
@@ -227,35 +287,50 @@ int main() {
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
-    std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
-    std::cout << "Transposed Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-
+    std::cout << "\nTransposed Time = " << ms_double.count() << "ms\n";
+    std::cout << "Transposed Performance = "
+              << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "multiply/transposed.csv", R1, C2);
 
     t1 = high_resolution_clock::now();
     mulMatWithUnrolled(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
-    std::cout << "Unrolled Time = " << ms_double.count() << "ms\n";
-    std::cout << "Unrolled Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-
+    std::cout << "\nUnrolled Time = " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled Performance = " << calculateGFLOPS(ms_double.count())
+              << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "multiply/unrolled.csv", R1, C2);
 
     t1 = high_resolution_clock::now();
     mulMatWithUnrolledAll(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
-    std::cout << "Unrolled All Time = " << ms_double.count() << "ms\n";
-    std::cout << "Unrolled All Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-
+    std::cout << "\nUnrolled All Time = " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled All Performance = "
+              << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "multiply/unrolledAll.csv", R1, C2);
 
     t1 = high_resolution_clock::now();
     mulMatBlocked(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
-    std::cout << "Blocked Time = " << ms_double.count() << "ms\n";
-    std::cout << "Blocked Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+    std::cout << "\nBlocked Time = " << ms_double.count() << "ms\n";
+    std::cout << "Blocked Performance = " << calculateGFLOPS(ms_double.count())
+              << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "multiply/blocked.csv", R1, C2);
+
+    t1 = high_resolution_clock::now();
+    mulMatBlockedWithUnroll(mat1, transposed, result);
+    t2 = high_resolution_clock::now();
+    ms_double = t2 - t1;
+
+    std::cout << "\nBlocked and Unrolled Time = " << ms_double.count() << "ms\n";
+    std::cout << "Blocked and Unrolled Performance = " << calculateGFLOPS(ms_double.count())
+              << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "multiply/blockedUnrolled.csv", R1, C2);
 
     // Add Eigen measurement
     MatrixXi eigenMat1 = MatrixXi::Map(mat1, R1, C1);
@@ -267,9 +342,10 @@ int main() {
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
-    std::cout << "Eigen Time = " << ms_double.count() << "ms\n";
-    std::cout << "Eigen Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-
+    std::cout << "\nEigen Time = " << ms_double.count() << "ms\n";
+    std::cout << "Eigen Performance = " << calculateGFLOPS(ms_double.count())
+              << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "multiply/eigen.csv", R1, C2);
 
     // Clean up
     delete[] mat1;

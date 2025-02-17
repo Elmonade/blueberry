@@ -8,7 +8,7 @@ int main() {
     std::mt19937 gen(rd());
     std::string name = "multiply/2048x2048.csv";
     
-    std::uniform_int_distribution<> dis(1, 100);
+    std::uniform_int_distribution<> dis(0, 100);
     
     std::ofstream file(name);
     if (!file.is_open()) {
