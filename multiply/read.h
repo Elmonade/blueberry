@@ -1,8 +1,10 @@
-#ifndef CSV_READER_H
-#define CSV_READER_H
+// read.h
+#ifndef READ_H
+#define READ_H
 
 #include <string>
+#include <vector>
 
-int readIntegersFromCSV(const std::string& filename, int arr[], int num_integers);
-
+int readIntegersFromCSV(const std::string &filename, std::vector<int> &matrix, 
+                        int rows, int cols);
 #endif

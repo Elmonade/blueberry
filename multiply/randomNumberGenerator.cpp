@@ -7,7 +7,7 @@ int main() {
     // Create a random number generator
     std::random_device rd;
     std::mt19937 gen(rd());
-  std::string name = "matrixMult/2048x1024.csv";
+  std::string name = "multiply/2048x2048.csv";
 
     // Define the distribution (e.g., numbers between 1 and 100)
     std::uniform_int_distribution<> dis(1, 100);

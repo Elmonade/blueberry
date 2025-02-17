@@ -8,65 +8,68 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 512
-#define C1 1024
+#define R1 1024
+#define C1 2048
 
-#define R2 1024
-#define C2 512
+#define R2 2048
+#define C2 1024
 
 // Clean memory per value
-void mulMat(const int (&mat1)[R1 * C1], const int (&mat2)[R2 * C2],
-            int (&result)[R1 * C2]) {
-  for (int i = 0; i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      result[i * C2 + j] = 0;
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
-      }
+void mulMat(const std::vector<int>& mat1, const std::vector<int>& mat2,
+            std::vector<int>& result) {
+    result.resize(R1 * C2);
+    for (int i = 0; i < R1; i++) {
+        for (int j = 0; j < C2; j++) {
+            result[i * C2 + j] = 0;
+            for (int k = 0; k < C1; k++) {
+                result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
+            }
+        }
     }
-  }
 }
 
 /*
  * This gives us slightly faster performance
  */
-void mulMatWithCleanMemory(const int (&mat1)[R1 * C1],
-                           const int (&mat2)[R2 * C2], int (&result)[R1 * C2]) {
-  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
-  for (int i = 0; i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] +=
-            mat1[i * C1 + k] *
-            mat2[k * C2 + j]; // M2 is being read top-down - Transpose this.
-      }
+void mulMatWithCleanMemory(const std::vector<int>& mat1, 
+                          const std::vector<int>& mat2, 
+                          std::vector<int>& result) {
+    result.resize(R1 * C2);
+    std::fill(result.begin(), result.end(), 0);
+    for (int i = 0; i < R1; i++) {
+        for (int j = 0; j < C2; j++) {
+            for (int k = 0; k < C1; k++) {
+                result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
+            }
+        }
     }
-  }
 }
 
 /*
  * TODO: On tranposed matrix
  */
-void mulMatWithCleanMemoryOnTransposed(const int (&mat1)[R1 * C1],
-                                       const int (&mat2T)[R2 * C2],
-                                       int (&result)[R1 * C2]) {
-  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
-  for (int i = 0; i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-      }
+void mulMatWithCleanMemoryOnTransposed(const std::vector<int>& mat1,
+                                      const std::vector<int>& mat2T,
+                                      std::vector<int>& result) {
+    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
+
+    for (int i = 0; i < R1; i++) {
+        for (int j = 0; j < C2; j++) {
+            for (int k = 0; k < C1; k++) {
+                result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+        }
     }
-  }
 }
 
 /*
  * TODO: Partially unroll(2 of them) the loop
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolled(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
-                        int (&result)[R1 * C2]) {
-  memset(result, 0, sizeof(int) * R1 * C2);
+void mulMatWithUnrolled(const std::vector<int>& mat1,
+                                      const std::vector<int>& mat2T,
+                                      std::vector<int>& result) {
+    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
     for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
@@ -99,9 +102,10 @@ void mulMatWithUnrolled(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
  * TODO: Partially unroll(3 of them) the loop
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolledAll(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
-                        int (&result)[R1 * C2]) {
-  memset(result, 0, sizeof(int) * R1 * C2);
+void mulMatWithUnrolledAll(const std::vector<int>& mat1,
+                                      const std::vector<int>& mat2T,
+                                      std::vector<int>& result) {
+    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
     for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
@@ -141,10 +145,11 @@ void mulMatWithUnrolledAll(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C
   }
 }
 
-void mulMatBlocked(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
-                   int (&result)[R1 * C2]) {
+void mulMatBlocked(const std::vector<int>& mat1,
+                                      const std::vector<int>& mat2T,
+                                      std::vector<int>& result) {
   const int BLOCK_SIZE = 64; // Cache size
-  memset(result, 0, sizeof(int) * R1 * C2);
+    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {   // Block row of mat1
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) { // Block column of mat2T
@@ -164,29 +169,30 @@ void mulMatBlocked(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
   }
 }
 
-void transpose(const int (&ogMat)[R2 * C2], int (&tpMat)[R2 * C2]) {
-  memset(tpMat, 0, sizeof(int) * R2 * C2);
-  int cnt = 0;
-  for (int i = 0; i < C2; i++) {
-    for (int j = 0; j < R2; j++) {
-      tpMat[cnt] = ogMat[C2 * j + i];
-      cnt++;
+void transpose(const std::vector<int>& ogMat, std::vector<int>& tpMat) {
+    tpMat.resize(R2 * C2, 0);
+    
+    int cnt = 0;
+    for (int i = 0; i < C2; i++) {
+        for (int j = 0; j < R2; j++) {
+            tpMat[cnt] = ogMat[C2 * j + i];
+            cnt++;
+        }
     }
-  }
 }
 
 int main() {
-  int mat1[R1 * C1];
-  int mat2[R2 * C2];
-  int result[R1 * C2];
-  int transposed[R2 * C2];
+  std::vector<int> mat1;
+  std::vector<int> mat2;
+  std::vector<int> result;
+  std::vector<int> transposed;
 
-  if (readIntegersFromCSV("multiply/2048x1024.csv", mat1, R1 * C1) != R1 * C1) {
+  if (readIntegersFromCSV("multiply/2048x2048.csv", mat1, R1, C1) != R1 * C1) {
     cout << "Error reading matrix 1\n";
     return 1;
   }
 
-  if (readIntegersFromCSV("multiply/2048x1024.csv", mat2, R2 * C2) != R2 * C2) {
+  if (readIntegersFromCSV("multiply/2048x2048.csv", mat2, R2, C2) != R2 * C2) {
     cout << "Error reading matrix 2\n";
     return 1;
   }
@@ -216,7 +222,7 @@ int main() {
 
   std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
 
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 5; i++) {
     cout << result[i] << " ";
   }
   cout << "\n";
@@ -228,7 +234,7 @@ int main() {
 
   std::cout << "Unrolled Time = " << ms_double.count() << "ms\n";
 
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 5; i++) {
     cout << result[i] << " ";
   }
   cout << "\n";
@@ -240,7 +246,7 @@ int main() {
 
   std::cout << "Unrolled All Time = " << ms_double.count() << "ms\n";
 
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 5; i++) {
     cout << result[i] << " ";
   }
   cout << "\n";
