@@ -8,68 +8,74 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 1024
-#define C1 2048
+#define R1 512
+#define C1 1024
 
-#define R2 2048
-#define C2 1024
+#define R2 1024
+#define C2 512
+
+// #define R1 1024
+// #define C1 2048
+//
+// #define R2 2048
+// #define C2 1024
 
 // Clean memory per value
-void mulMat(const std::vector<int>& mat1, const std::vector<int>& mat2,
-            std::vector<int>& result) {
-    result.resize(R1 * C2);
-    for (int i = 0; i < R1; i++) {
-        for (int j = 0; j < C2; j++) {
-            result[i * C2 + j] = 0;
-            for (int k = 0; k < C1; k++) {
-                result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
-            }
-        }
+void mulMat(const std::vector<int> &mat1, const std::vector<int> &mat2,
+            std::vector<int> &result) {
+  result.resize(R1 * C2);
+  for (int i = 0; i < R1; i++) {
+    for (int j = 0; j < C2; j++) {
+      result[i * C2 + j] = 0;
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
+      }
     }
+  }
 }
 
 /*
  * This gives us slightly faster performance
  */
-void mulMatWithCleanMemory(const std::vector<int>& mat1, 
-                          const std::vector<int>& mat2, 
-                          std::vector<int>& result) {
-    result.resize(R1 * C2);
-    std::fill(result.begin(), result.end(), 0);
-    for (int i = 0; i < R1; i++) {
-        for (int j = 0; j < C2; j++) {
-            for (int k = 0; k < C1; k++) {
-                result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
-            }
-        }
+void mulMatWithCleanMemory(const std::vector<int> &mat1,
+                           const std::vector<int> &mat2,
+                           std::vector<int> &result) {
+  result.resize(R1 * C2, 0);
+  std::fill(result.begin(), result.end(), 0);
+  for (int i = 0; i < R1; i++) {
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
+      }
     }
+  }
 }
 
 /*
  * TODO: On tranposed matrix
  */
-void mulMatWithCleanMemoryOnTransposed(const std::vector<int>& mat1,
-                                      const std::vector<int>& mat2T,
-                                      std::vector<int>& result) {
-    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
+void mulMatWithCleanMemoryOnTransposed(const std::vector<int> &mat1,
+                                       const std::vector<int> &mat2T,
+                                       std::vector<int> &result) {
+  result.resize(R1 * C2, 0);
 
-    for (int i = 0; i < R1; i++) {
-        for (int j = 0; j < C2; j++) {
-            for (int k = 0; k < C1; k++) {
-                result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-            }
-        }
+  for (int i = 0; i < R1; i++) {
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+      }
     }
+  }
 }
 
 /*
  * TODO: Partially unroll(2 of them) the loop
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolled(const std::vector<int>& mat1,
-                                      const std::vector<int>& mat2T,
-                                      std::vector<int>& result) {
-    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
+void mulMatWithUnrolled(const std::vector<int> &mat1,
+                        const std::vector<int> &mat2T,
+                        std::vector<int> &result) {
+  result.resize(R1 * C2, 0); // Resize and initialize all elements to 0
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
     for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
@@ -78,7 +84,8 @@ void mulMatWithUnrolled(const std::vector<int>& mat1,
         result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
 
         result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
+        result[(i + 1) * C2 + (j + 1)] +=
+            mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
       }
     }
     // Handle remaining columns for these two rows
@@ -102,29 +109,34 @@ void mulMatWithUnrolled(const std::vector<int>& mat1,
  * TODO: Partially unroll(3 of them) the loop
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolledAll(const std::vector<int>& mat1,
-                                      const std::vector<int>& mat2T,
-                                      std::vector<int>& result) {
-    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
+void mulMatWithUnrolledAll(const std::vector<int> &mat1,
+                           const std::vector<int> &mat2T,
+                           std::vector<int> &result) {
+  result.resize(R1 * C2, 0); // Resize and initialize all elements to 0
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
     for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
       for (int k = 0; k < ROUND_DOWN(C1, stepsize); k += stepsize) {
         result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-        result[i * C2 + j] += mat1[i * C1 + k+1] * mat2T[j * C1 + k+1];
+        result[i * C2 + j] += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
         result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
-        result[i * C2 + (j + 1)] += mat1[i * C1 + k+1] * mat2T[(j + 1) * C1 + k+1];
+        result[i * C2 + (j + 1)] +=
+            mat1[i * C1 + k + 1] * mat2T[(j + 1) * C1 + k + 1];
         result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k+1] * mat2T[j * C1 + k+1];
-        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
-        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + (k+1)] * mat2T[(j + 1) * C1 + (k+1)];
+        result[(i + 1) * C2 + j] +=
+            mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
+        result[(i + 1) * C2 + (j + 1)] +=
+            mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
+        result[(i + 1) * C2 + (j + 1)] +=
+            mat1[(i + 1) * C1 + (k + 1)] * mat2T[(j + 1) * C1 + (k + 1)];
       }
       // Handle remaining k
       for (int k = ROUND_DOWN(C1, stepsize); k < C1; k++) {
         result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
         result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
         result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
+        result[(i + 1) * C2 + (j + 1)] +=
+            mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
       }
     }
     // Handle remaining columns for these two rows
@@ -145,11 +157,10 @@ void mulMatWithUnrolledAll(const std::vector<int>& mat1,
   }
 }
 
-void mulMatBlocked(const std::vector<int>& mat1,
-                                      const std::vector<int>& mat2T,
-                                      std::vector<int>& result) {
+void mulMatBlocked(const std::vector<int> &mat1, const std::vector<int> &mat2T,
+                   std::vector<int> &result) {
   const int BLOCK_SIZE = 64; // Cache size
-    result.resize(R1 * C2, 0);  // Resize and initialize all elements to 0
+  result.resize(R1 * C2, 0); // Resize and initialize all elements to 0
 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {   // Block row of mat1
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) { // Block column of mat2T
@@ -169,16 +180,16 @@ void mulMatBlocked(const std::vector<int>& mat1,
   }
 }
 
-void transpose(const std::vector<int>& ogMat, std::vector<int>& tpMat) {
-    tpMat.resize(R2 * C2, 0);
-    
-    int cnt = 0;
-    for (int i = 0; i < C2; i++) {
-        for (int j = 0; j < R2; j++) {
-            tpMat[cnt] = ogMat[C2 * j + i];
-            cnt++;
-        }
+void transpose(const std::vector<int> &ogMat, std::vector<int> &tpMat) {
+  tpMat.resize(R2 * C2, 0);
+
+  int cnt = 0;
+  for (int i = 0; i < C2; i++) {
+    for (int j = 0; j < R2; j++) {
+      tpMat[cnt] = ogMat[C2 * j + i];
+      cnt++;
     }
+  }
 }
 
 int main() {
