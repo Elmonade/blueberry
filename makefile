@@ -1,34 +1,38 @@
-CFLAGS = -Wall -Wextra -march=native
+CFLAGS = -Wall -Wextra -march=native -Ofast
 CC = g++
-VPATH = src:matrixMult/build
+VPATH = src:multiply/build
 
-matrixMult/build/bin/matrix_mult : matrixMult/singleThread.o matrixMult/read.o
-	mkdir -p matrixMult/build/bin
+multiply/build/bin/matrix_mult : multiply/singleThread.o multiply/read.o
+	mkdir -p multiply/build/bin
 	$(CC) $(CFLAGS) $^ -o $@
 
-matrixMult/build/bin/random_gen : matrixMult/randomNumberGenerator.o
-	mkdir -p matrixMult/build/bin
+multiply/build/bin/random_gen : multiply/randomNumberGenerator.o
+	mkdir -p multiply/build/bin
 	$(CC) $(CFLAGS) $^ -o $@
 
-matrixMult/build/singleThread.o : matrixMult/singleThread.cpp
-	mkdir -p matrixMult/build
+multiply/build/multiplier.o : multiply/multiplier.cpp
+	mkdir -p multiply/build
 	$(CC) $(CFLAGS) -c $? -o $@
 
-matrixMult/build/read.o : matrixMult/read.cpp
+multiply/build/singleThread.o : multiply/singleThread.cpp
+	mkdir -p multiply/build
 	$(CC) $(CFLAGS) -c $? -o $@
 
-matrixMult/build/randomNumberGenerator.o : matrixMult/randomNumberGenerator.cpp
+multiply/build/read.o : multiply/read.cpp
+	$(CC) $(CFLAGS) -c $? -o $@
+
+multiply/build/randomNumberGenerator.o : multiply/randomNumberGenerator.cpp
 	$(CC) $(CFLAGS) -c $? -o $@
 
 .PHONY = clean run generate
 
 clean :
-	rm -rvf matrixMult/build
+	rm -rvf multiply/build
 
-run: matrixMult/build/bin/matrix_mult
-	./matrixMult/build/bin/matrix_mult
+run: multiply/build/bin/matrix_mult
+	./multiply/build/bin/matrix_mult
 
-generate: matrixMult/build/bin/random_gen
-	./matrixMult/build/bin/random_gen
+generate: multiply/build/bin/random_gen
+	./multiply/build/bin/random_gen
 
-all: matrixMult/build/bin/matrix_mult matrixMult/build/bin/random_gen
+all: multiply/build/bin/matrix_mult multiply/build/bin/random_gen

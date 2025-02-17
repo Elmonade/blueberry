@@ -60,6 +60,39 @@ void mulMatWithCleanMemoryOnTransposed(const int (&mat1)[R1 * C1],
   }
 }
 
+/*
+ * TODO: Partially unroll the loop
+ */
+
+#define ROUND_DOWN(x, s) ((x) & ~((s)-1))
+void mulMatWithUnrolled(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
+                        int (&result)[R1 * C2]) {
+  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
+  const int stepsize = 2;
+  int i = 0;
+  for (; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
+    // i+0
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+      }
+    }
+    // i+1
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i+1 * C2 + j] += mat1[i+1 * C1 + k] * mat2T[j * C1 + k];
+      }
+    }
+  }
+  // If odd
+  for (; i < R1; i++)
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i+1 * C2 + j] += mat1[i+1 * C1 + k] * mat2T[j * C1 + k];
+      }
+    }
+}
+
 void mulMatBlocked(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
                    int (&result)[R1 * C2]) {
   const int BLOCK_SIZE = 64; // Cache size
@@ -100,15 +133,13 @@ int main() {
   int result[R1 * C2];
   int transposed[R2 * C2];
 
-  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat1, R1 * C1) !=
-      R1 * C1) {
-    cout << "Error reading first matrix\n";
+  if (readIntegersFromCSV("multiply/2048x1024.csv", mat1, R1 * C1) != R1 * C1) {
+    cout << "Error reading matrix 1\n";
     return 1;
   }
 
-  if (readIntegersFromCSV("matrixMult/2048x1024.csv", mat2, R2 * C2) !=
-      R2 * C2) {
-    cout << "Error reading first matrix\n";
+  if (readIntegersFromCSV("multiply/2048x1024.csv", mat2, R2 * C2) != R2 * C2) {
+    cout << "Error reading matrix 2\n";
     return 1;
   }
 
@@ -142,12 +173,25 @@ int main() {
   }
   cout << "\n";
 
+  transpose(mat2, transposed);
+  t1 = high_resolution_clock::now();
+  mulMatWithUnrolled(mat1, transposed, result);
+  t2 = high_resolution_clock::now();
+  ms_double = t2 - t1;
+
+  std::cout << "Unrolled Time = " << ms_double.count() << "ms\n";
+
+  for (int i = 0; i < 5; i++) {
+    cout << result[i] << " ";
+  }
+  cout << "\n";
+
   t1 = high_resolution_clock::now();
   mulMatBlocked(mat1, transposed, result);
   t2 = high_resolution_clock::now();
   ms_double = t2 - t1;
 
-  std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
+  std::cout << "Blocked Time = " << ms_double.count() << "ms\n";
 
   for (int i = 0; i < 5; i++) {
     cout << result[i] << " ";
