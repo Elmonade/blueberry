@@ -15,140 +15,48 @@ using Eigen::MatrixXi;  // Add Eigen matrix type
 #define R2 2048
 #define C2 1024
 
-// Clean memory per value
-void mulMat(const int *mat1, const int *mat2, int *result) {
-  for (int i = 0; i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      result[i * C2 + j] = 0;
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
-      }
-    }
-  }
-}
-
-/*
- * This gives us slightly faster performance
- */
-void mulMatWithCleanMemory(const int *mat1, const int *mat2, int *result) {
-  memset(result, 0, sizeof(int) * R1 * C2);
-  for (int i = 0; i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
-      }
-    }
-  }
-}
-
-/*
- * TODO: On tranposed matrix
- */
-void mulMatWithCleanMemoryOnTransposed(const int *mat1, const int *mat2T,
-                                       int *result) {
-  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
-  for (int i = 0; i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-      }
-    }
-  }
-}
-
-/*
- * TODO: Partially unroll(2 of them) the loop
- */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolled(const int *mat1, const int *mat2T, int *result) {
-  memset(result, 0, sizeof(int) * R1 * C2);
-  const int stepsize = 2;
-  for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
-    for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-        result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
 
-        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + (j + 1)] +=
-            mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
-      }
-    }
-    // Handle remaining columns for these two rows
-    for (int j = ROUND_DOWN(C2, stepsize); j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-      }
-    }
-  }
-  // Handle remaining rows
-  for (int i = ROUND_DOWN(R1, stepsize); i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-      }
-    }
-  }
-}
-/*
- * TODO: Partially unroll(3 of them) the loop
- */
-#define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolledAll(const int *mat1, const int *mat2T, int *result) {
-  memset(result, 0, sizeof(int) * R1 * C2);
-  const int stepsize = 2;
-  for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
-    for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
-      for (int k = 0; k < ROUND_DOWN(C1, stepsize); k += stepsize) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-        result[i * C2 + j] += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
-        result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
-        result[i * C2 + (j + 1)] +=
-            mat1[i * C1 + k + 1] * mat2T[(j + 1) * C1 + k + 1];
-        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + j] +=
-            mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
-        result[(i + 1) * C2 + (j + 1)] +=
-            mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
-        result[(i + 1) * C2 + (j + 1)] +=
-            mat1[(i + 1) * C1 + (k + 1)] * mat2T[(j + 1) * C1 + (k + 1)];
-      }
-      // Handle remaining k
-      for (int k = ROUND_DOWN(C1, stepsize); k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-        result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
-        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + (j + 1)] +=
-            mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
-      }
-    }
-    // Handle remaining columns for these two rows
-    for (int j = ROUND_DOWN(C2, stepsize); j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-      }
-    }
-  }
-  // Handle remaining rows
-  for (int i = ROUND_DOWN(R1, stepsize); i < R1; i++) {
-    for (int j = 0; j < C2; j++) {
-      for (int k = 0; k < C1; k++) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-      }
-    }
-  }
-}
-
-void mulMatBlocked(const int *mat1, const int *mat2T, int *result) {
-  const int BLOCK_SIZE = 128; // Cache size
+void mulMatBlockedWithUnroll(const int *mat1, const int *mat2T, int *result) {
+  const int BLOCK_SIZE = 128;
+  const int UNROLL = 2;
   memset(result, 0, sizeof(int) * R1 * C2);
 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
       for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1);
+             i += UNROLL) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            // Initialize sums for unrolled rows
+            int sum0 = result[i * C2 + j];
+            int sum1 = result[(i + 1) * C2 + j];
+
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
+
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
+            }
+
+            // Handle remaining k elements if C1 is not even
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), 2);
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+            }
+
+            // Store results
+            result[i * C2 + j] = sum0;
+            result[(i + 1) * C2 + j] = sum1;
+          }
+        }
+
+        // Handle remaining rows that couldn't be unrolled
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
             int sum = result[i * C2 + j];
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
@@ -212,53 +120,13 @@ int main() {
     }
 
     auto t1 = high_resolution_clock::now();
-    mulMatWithCleanMemory(mat1, mat2, result);
+    mulMatBlockedWithUnroll(mat1, mat2, result);
     auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
 
-    std::cout << "\nNormal Time = " << ms_double.count() << "ms\n";
-    std::cout << "Normal Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+    std::cout << "\nTime = " << ms_double.count() << "ms\n";
+    std::cout << "Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
     writeMatrixToCSV(result, "multiply/normal.csv", R1, C2);
-
-
-    transpose(mat2, transposed);
-    t1 = high_resolution_clock::now();
-    mulMatWithCleanMemoryOnTransposed(mat1, transposed, result);
-    t2 = high_resolution_clock::now();
-    ms_double = t2 - t1;
-
-    std::cout << "\nTransposed Time = " << ms_double.count() << "ms\n";
-    std::cout << "Transposed Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/transposed.csv", R1, C2);
-
-
-    t1 = high_resolution_clock::now();
-    mulMatWithUnrolled(mat1, transposed, result);
-    t2 = high_resolution_clock::now();
-    ms_double = t2 - t1;
-
-    std::cout << "\nUnrolled Time = " << ms_double.count() << "ms\n";
-    std::cout << "Unrolled Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/unrolled.csv", R1, C2);
-
-    t1 = high_resolution_clock::now();
-    mulMatWithUnrolledAll(mat1, transposed, result);
-    t2 = high_resolution_clock::now();
-    ms_double = t2 - t1;
-
-    std::cout << "\nUnrolled All Time = " << ms_double.count() << "ms\n";
-    std::cout << "Unrolled All Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/unrolledAll.csv", R1, C2);
-
-
-    t1 = high_resolution_clock::now();
-    mulMatBlocked(mat1, transposed, result);
-    t2 = high_resolution_clock::now();
-    ms_double = t2 - t1;
-
-    std::cout << "\nBlocked Time = " << ms_double.count() << "ms\n";
-    std::cout << "Blocked Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/blocked.csv", R1, C2);
 
     // Add Eigen measurement
     MatrixXi eigenMat1 = MatrixXi::Map(mat1, R1, C1);

@@ -166,15 +166,14 @@ void mulMatBlocked(const int *mat1, const int *mat2T, int *result) {
  * TODO: Add unrolling to the blocking
  */
 void mulMatBlockedWithUnroll(const int *mat1, const int *mat2T, int *result) {
-  const int BLOCK_SIZE = 128; // Cache size
-  const int UNROLL = 2;       // Unrolling factor
+  const int BLOCK_SIZE = 128;
+  const int UNROLL = 2;
   memset(result, 0, sizeof(int) * R1 * C2);
 
-  // Block level loops
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
       for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-        // Within each block
+
         for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1);
              i += UNROLL) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
@@ -182,13 +181,10 @@ void mulMatBlockedWithUnroll(const int *mat1, const int *mat2T, int *result) {
             int sum0 = result[i * C2 + j];
             int sum1 = result[(i + 1) * C2 + j];
 
-            // Unrolled k-loop for better instruction-level parallelism
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
-              // First row calculations
               sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
               sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
 
-              // Second row calculations
               sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
               sum1 += mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
             }
