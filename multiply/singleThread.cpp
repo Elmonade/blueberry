@@ -112,7 +112,7 @@ void mulMatWithUnrolledAll(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C
         result[i * C2 + (j + 1)] += mat1[i * C1 + k+1] * mat2T[(j + 1) * C1 + k+1];
         result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
         result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k+1] * mat2T[j * C1 + k+1];
-        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k+1];
+        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
         result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + (k+1)] * mat2T[(j + 1) * C1 + (k+1)];
       }
       // Handle remaining k
@@ -216,7 +216,7 @@ int main() {
 
   std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 1000; i++) {
     cout << result[i] << " ";
   }
   cout << "\n";
@@ -228,7 +228,7 @@ int main() {
 
   std::cout << "Unrolled Time = " << ms_double.count() << "ms\n";
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 1000; i++) {
     cout << result[i] << " ";
   }
   cout << "\n";
@@ -240,7 +240,7 @@ int main() {
 
   std::cout << "Unrolled All Time = " << ms_double.count() << "ms\n";
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 1000; i++) {
     cout << result[i] << " ";
   }
   cout << "\n";
