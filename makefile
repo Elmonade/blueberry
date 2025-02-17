@@ -1,4 +1,5 @@
 CFLAGS = -Wall -Wextra -march=native -Ofast
+CXXFLAGS += -I/usr/include/eigen3
 CC = g++
 VPATH = src:multiply/build
 

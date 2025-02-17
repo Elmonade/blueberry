@@ -2,11 +2,12 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <Eigen/Dense>
 
-using std::cout;
 using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
+using Eigen::MatrixXi;  // Add Eigen matrix type
 
 #define R1 1024
 #define C1 2048
@@ -173,17 +174,23 @@ void transpose(int *ogMat, int *tpMat) {
   }
 }
 
+double calculateGFLOPS(double milliseconds) {
+    double seconds = milliseconds / 1000.0;
+    double operations = 2.0 * R1 * C2 * C1;  // 2 operations per multiply-add
+    return (operations / seconds) / 1e9;     // Convert to GFLOPS
+}
+
 int main() {
   try {
-    const size_t matrix1_size = (long long)R1 * C1; // 1024 * 2048
-    const size_t matrix2_size = (long long)R2 * C2; // 2048 * 1024
-    const size_t result_size = (long long)R1 * C2;  // 1024 * 1024 for result
+    const size_t matrix1_size = (long long)R1 * C1;
+    const size_t matrix2_size = (long long)R2 * C2;
+    const size_t result_size = (long long)R1 * C2;
 
     // Allocate arrays on heap
     int *mat1 = new int[matrix1_size];
     int *mat2 = new int[matrix2_size];
-    int *result = new int[result_size];      // Result is R1 x C2
-    int *transposed = new int[matrix2_size]; // Same size as mat2
+    int *result = new int[result_size];
+    int *transposed = new int[matrix2_size];
 
     if (readIntegersFromCSV("multiply/2048x2048.csv", mat1, matrix1_size) !=
         matrix1_size) {
@@ -211,11 +218,8 @@ int main() {
     duration<double, std::milli> ms_double = t2 - t1;
 
     std::cout << "Normal Time = " << ms_double.count() << "ms\n";
+    std::cout << "Normal Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
 
-    for (int i = 0; i < 5; i++) {
-      cout << result[i] << " ";
-    }
-    cout << "\n";
 
     transpose(mat2, transposed);
     t1 = high_resolution_clock::now();
@@ -224,11 +228,8 @@ int main() {
     ms_double = t2 - t1;
 
     std::cout << "Transposed Time = " << ms_double.count() << "ms\n";
+    std::cout << "Transposed Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
 
-    for (int i = 0; i < 5; i++) {
-      cout << result[i] << " ";
-    }
-    cout << "\n";
 
     t1 = high_resolution_clock::now();
     mulMatWithUnrolled(mat1, transposed, result);
@@ -236,11 +237,8 @@ int main() {
     ms_double = t2 - t1;
 
     std::cout << "Unrolled Time = " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
 
-    for (int i = 0; i < 5; i++) {
-      cout << result[i] << " ";
-    }
-    cout << "\n";
 
     t1 = high_resolution_clock::now();
     mulMatWithUnrolledAll(mat1, transposed, result);
@@ -248,11 +246,8 @@ int main() {
     ms_double = t2 - t1;
 
     std::cout << "Unrolled All Time = " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled All Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
 
-    for (int i = 0; i < 5; i++) {
-      cout << result[i] << " ";
-    }
-    cout << "\n";
 
     t1 = high_resolution_clock::now();
     mulMatBlocked(mat1, transposed, result);
@@ -260,11 +255,21 @@ int main() {
     ms_double = t2 - t1;
 
     std::cout << "Blocked Time = " << ms_double.count() << "ms\n";
+    std::cout << "Blocked Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
 
-    for (int i = 0; i < 5; i++) {
-      cout << result[i] << " ";
-    }
-    cout << "\n";
+    // Add Eigen measurement
+    MatrixXi eigenMat1 = MatrixXi::Map(mat1, R1, C1);
+    MatrixXi eigenMat2 = MatrixXi::Map(mat2, R2, C2);
+    MatrixXi eigenResult(R1, C2);
+
+    t1 = high_resolution_clock::now();
+    eigenResult = eigenMat1 * eigenMat2;
+    t2 = high_resolution_clock::now();
+    ms_double = t2 - t1;
+
+    std::cout << "Eigen Time = " << ms_double.count() << "ms\n";
+    std::cout << "Eigen Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+
 
     // Clean up
     delete[] mat1;
