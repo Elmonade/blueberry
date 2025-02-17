@@ -61,36 +61,84 @@ void mulMatWithCleanMemoryOnTransposed(const int (&mat1)[R1 * C1],
 }
 
 /*
- * TODO: Partially unroll the loop
+ * TODO: Partially unroll(2 of them) the loop
  */
-
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
 void mulMatWithUnrolled(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
                         int (&result)[R1 * C2]) {
-  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
+  memset(result, 0, sizeof(int) * R1 * C2);
   const int stepsize = 2;
-  int i = 0;
-  for (; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
-    // i+0
+  for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
+    for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
+
+        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
+      }
+    }
+    // Handle remaining columns for these two rows
+    for (int j = ROUND_DOWN(C2, stepsize); j < C2; j++) {
+      for (int k = 0; k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+      }
+    }
+  }
+  // Handle remaining rows
+  for (int i = ROUND_DOWN(R1, stepsize); i < R1; i++) {
     for (int j = 0; j < C2; j++) {
       for (int k = 0; k < C1; k++) {
         result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
       }
     }
-    // i+1
-    for (int j = 0; j < C2; j++) {
+  }
+}
+/*
+ * TODO: Partially unroll(3 of them) the loop
+ */
+#define ROUND_DOWN(x, s) ((x) & ~((s)-1))
+void mulMatWithUnrolledAll(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
+                        int (&result)[R1 * C2]) {
+  memset(result, 0, sizeof(int) * R1 * C2);
+  const int stepsize = 2;
+  for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
+    for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
+      for (int k = 0; k < ROUND_DOWN(C1, stepsize); k += stepsize) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        result[i * C2 + j] += mat1[i * C1 + k+1] * mat2T[j * C1 + k+1];
+        result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
+        result[i * C2 + (j + 1)] += mat1[i * C1 + k+1] * mat2T[(j + 1) * C1 + k+1];
+        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k+1] * mat2T[j * C1 + k+1];
+        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k+1];
+        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + (k+1)] * mat2T[(j + 1) * C1 + (k+1)];
+      }
+      // Handle remaining k
+      for (int k = ROUND_DOWN(C1, stepsize); k < C1; k++) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        result[i * C2 + (j + 1)] += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
+        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+        result[(i + 1) * C2 + (j + 1)] += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
+      }
+    }
+    // Handle remaining columns for these two rows
+    for (int j = ROUND_DOWN(C2, stepsize); j < C2; j++) {
       for (int k = 0; k < C1; k++) {
-        result[i+1 * C2 + j] += mat1[i+1 * C1 + k] * mat2T[j * C1 + k];
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        result[(i + 1) * C2 + j] += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
       }
     }
   }
-  // If odd
-  for (; i < R1; i++)
+  // Handle remaining rows
+  for (int i = ROUND_DOWN(R1, stepsize); i < R1; i++) {
     for (int j = 0; j < C2; j++) {
       for (int k = 0; k < C1; k++) {
-        result[i+1 * C2 + j] += mat1[i+1 * C1 + k] * mat2T[j * C1 + k];
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
       }
     }
+  }
 }
 
 void mulMatBlocked(const int (&mat1)[R1 * C1], const int (&mat2T)[R2 * C2],
@@ -173,13 +221,24 @@ int main() {
   }
   cout << "\n";
 
-  transpose(mat2, transposed);
   t1 = high_resolution_clock::now();
   mulMatWithUnrolled(mat1, transposed, result);
   t2 = high_resolution_clock::now();
   ms_double = t2 - t1;
 
   std::cout << "Unrolled Time = " << ms_double.count() << "ms\n";
+
+  for (int i = 0; i < 5; i++) {
+    cout << result[i] << " ";
+  }
+  cout << "\n";
+
+  t1 = high_resolution_clock::now();
+  mulMatWithUnrolledAll(mat1, transposed, result);
+  t2 = high_resolution_clock::now();
+  ms_double = t2 - t1;
+
+  std::cout << "Unrolled All Time = " << ms_double.count() << "ms\n";
 
   for (int i = 0; i < 5; i++) {
     cout << result[i] << " ";
