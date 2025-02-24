@@ -1,24 +1,19 @@
 #include "read.h"
-#include <Eigen/Dense>
+#include <cblas.h>
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <cstdlib> // ENV
 
-using Eigen::MatrixXd; // Add Eigen matrix type
 using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-//#define R1 1024
-//#define C1 2048
-#define R1 2
-#define C1 4
+#define R1 1024
+#define C1 1024
 
-//#define R2 2048
-//#define C2 1024
-
-#define R2 4
-#define C2 2
+#define R2 1024
+#define C2 1024
 
 // Clean memory per value
 void mulMat(const double *mat1, const double *mat2, double *result) {
@@ -241,6 +236,10 @@ double calculateGFLOPS(double milliseconds) {
 }
 
 int main() {
+  setenv("OPENBLAS_NUM_THREADS", "1", 1);
+  setenv("MKL_NUM_THREADS", "1", 1);
+  setenv("NUMEXPR_NUM_THREADS", "1", 1);
+  setenv("OMP_NUM_THREADS", "1", 1);
   try {
     const size_t matrix1_size = (long long)R1 * C1;
     const size_t matrix2_size = (long long)R2 * C2;
@@ -335,20 +334,30 @@ int main() {
               << " GFLOPS/s\n";
     writeMatrixToCSV(result, "multiply/blockedUnrolled.csv", R1, C2);
 
-    // Add Eigen measurement
-    MatrixXd eigenMat1 = MatrixXd::Map(mat1, R1, C1);
-    MatrixXd eigenMat2 = MatrixXd::Map(mat2, R2, C2);
-    MatrixXd eigenResult(R1, C2);
-
+    // Add OpenBLAS
     t1 = high_resolution_clock::now();
-    eigenResult = eigenMat1 * eigenMat2;
+    // OpenBLAS matrix multiplication using DGEMM
+    cblas_dgemm(CblasRowMajor,    // Matrix layout (row major)
+                CblasNoTrans,      // Don't transpose first matrix
+                CblasNoTrans,      // Don't transpose second matrix
+                R1,                // Rows of first matrix
+                C2,                // Columns of second matrix
+                C1,                // Columns of first/rows of second matrix
+                1.0,               // Alpha scaling factor
+                mat1,              // First matrix
+                C1,                // Leading dimension of first matrix
+                mat2,              // Second matrix
+                C2,                // Leading dimension of second matrix
+                0.0,               // Beta scaling factor
+                result,            // Result matrix
+                C2);              // Leading dimension of result matrix
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
-    std::cout << "\nEigen Time = " << ms_double.count() << "ms\n";
-    std::cout << "Eigen Performance = " << calculateGFLOPS(ms_double.count())
+    std::cout << "\nOpenBLAS Time = " << ms_double.count() << "ms\n";
+    std::cout << "OpenBLAS Performance = " << calculateGFLOPS(ms_double.count())
               << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/eigen.csv", R1, C2);
+    writeMatrixToCSV(result, "multiply/openblas.csv", R1, C2);
 
     // Clean up
     delete[] mat1;

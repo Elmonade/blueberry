@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -march=native -Ofast -fopenmp
+CFLAGS = -Wall -Wextra -march=native -Ofast -fopenmp -lopenblas
 CXXFLAGS += -I/usr/include/eigen3
 CC = g++
 VPATH = src:multiply/build
