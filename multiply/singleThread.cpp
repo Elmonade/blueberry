@@ -21,10 +21,10 @@ using std::chrono::milliseconds;
 #define C2 2
 
 // Clean memory per value
-void mulMat(const int *mat1, const int *mat2, int *result) {
+void mulMat(const double *mat1, const double *mat2, double *result) {
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
-      result[i * C2 + j] = 0;
+      result[i * C2 + j] = 0.0;
       for (int k = 0; k < C1; k++) {
         result[i * C2 + j] += mat1[i * C1 + k] * mat2[k * C2 + j];
       }
@@ -36,7 +36,7 @@ void mulMat(const int *mat1, const int *mat2, int *result) {
  * This gives us slightly faster performance
  */
 void mulMatWithCleanMemory(const double *mat1, const double *mat2, double *result) {
-  memset(result, 0, sizeof(int) * R1 * C2);
+  memset(result, 0, sizeof(double) * R1 * C2);
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
       for (int k = 0; k < C1; k++) {
@@ -51,7 +51,7 @@ void mulMatWithCleanMemory(const double *mat1, const double *mat2, double *resul
  */
 void mulMatWithCleanMemoryOnTransposed(const double *mat1, const double *mat2T,
                                        double *result) {
-  memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
+  memset(result, 0, sizeof(double) * R1 * C2); // Initialize all at once
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
       for (int k = 0; k < C1; k++) {
@@ -66,7 +66,7 @@ void mulMatWithCleanMemoryOnTransposed(const double *mat1, const double *mat2T,
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
 void mulMatWithUnrolled(const double *mat1, const double *mat2T, double *result) {
-  memset(result, 0, sizeof(int) * R1 * C2);
+  memset(result, 0, sizeof(double) * R1 * C2);
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
     for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
@@ -101,7 +101,7 @@ void mulMatWithUnrolled(const double *mat1, const double *mat2T, double *result)
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
 void mulMatWithUnrolledAll(const double *mat1, const double *mat2T, double *result) {
-  memset(result, 0, sizeof(int) * R1 * C2);
+  memset(result, 0, sizeof(double) * R1 * C2);
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
     for (int j = 0; j < ROUND_DOWN(C2, stepsize); j += stepsize) {
@@ -148,7 +148,7 @@ void mulMatWithUnrolledAll(const double *mat1, const double *mat2T, double *resu
 
 void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 64; // Cache size
-  memset(result, 0, sizeof(int) * R1 * C2);
+  memset(result, 0, sizeof(double) * R1 * C2);
 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
@@ -156,7 +156,7 @@ void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
 
         for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            int sum = result[i * C2 + j];
+            double sum = result[i * C2 + j];
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
               sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
             }
@@ -173,7 +173,7 @@ void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
 void mulMatBlockedWithUnroll(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 64;
   const int UNROLL = 2;
-  memset(result, 0, sizeof(int) * R1 * C2);
+  memset(result, 0, sizeof(double) * R1 * C2);
 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
@@ -183,8 +183,8 @@ void mulMatBlockedWithUnroll(const double *mat1, const double *mat2T, double *re
              i += UNROLL) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
             // Initialize sums for unrolled rows
-            int sum0 = result[i * C2 + j];
-            int sum1 = result[(i + 1) * C2 + j];
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[(i + 1) * C2 + j];
 
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
               sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
@@ -211,7 +211,7 @@ void mulMatBlockedWithUnroll(const double *mat1, const double *mat2T, double *re
         for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
              i < std::min(i0 + BLOCK_SIZE, R1); i++) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            int sum = result[i * C2 + j];
+            double sum = result[i * C2 + j];
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
               sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
             }
@@ -224,7 +224,7 @@ void mulMatBlockedWithUnroll(const double *mat1, const double *mat2T, double *re
 }
 
 void transpose(double *ogMat, double *tpMat) {
-  memset(tpMat, 0, sizeof(int) * R2 * C2);
+  memset(tpMat, 0, sizeof(double) * R2 * C2);
   int cnt = 0;
   for (int i = 0; i < C2; i++) {
     for (int j = 0; j < R2; j++) {
@@ -280,6 +280,8 @@ int main() {
     std::cout << "\nNormal Time = " << ms_double.count() << "ms\n";
     std::cout << "Normal Performance = " << calculateGFLOPS(ms_double.count())
               << " GFLOPS/s\n";
+    for(int i=0; i<(sizeof(result)/sizeof(double)); i++)
+      std::cout << result[i] << "\n";
     writeMatrixToCSV(result, "multiply/normal.csv", R1, C2);
 
     transpose(mat2, transposed);

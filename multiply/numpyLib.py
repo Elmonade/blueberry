@@ -20,12 +20,16 @@ matrix1 = pd.read_csv("multiply/2048x2048.csv", header=None).values
 matrix2 = pd.read_csv("multiply/2048x2048.csv", header=None).values
 
 # Ensure matrices are int32 type
-matrix1 = matrix1.astype(np.int32)
-matrix2 = matrix2.astype(np.int32)
+matrix1 = matrix1.astype(np.double)
+matrix2 = matrix2.astype(np.double)
 
 # Shape the matrices correctly
 matrix1 = matrix1[:2, :4]  # R1xC1 (2x4)
 matrix2 = matrix2[:4, :2]  # R2xC2 (4x2)
+
+
+print(matrix1)
+print(matrix2)
 
 # Measure multiplication time
 start_time = time.time()
