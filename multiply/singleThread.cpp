@@ -4,16 +4,21 @@
 #include <cstring>
 #include <iostream>
 
-using Eigen::MatrixXi; // Add Eigen matrix type
+using Eigen::MatrixXd; // Add Eigen matrix type
 using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 1024
-#define C1 2048
+//#define R1 1024
+//#define C1 2048
+#define R1 2
+#define C1 4
 
-#define R2 2048
-#define C2 1024
+//#define R2 2048
+//#define C2 1024
+
+#define R2 4
+#define C2 2
 
 // Clean memory per value
 void mulMat(const int *mat1, const int *mat2, int *result) {
@@ -30,7 +35,7 @@ void mulMat(const int *mat1, const int *mat2, int *result) {
 /*
  * This gives us slightly faster performance
  */
-void mulMatWithCleanMemory(const int *mat1, const int *mat2, int *result) {
+void mulMatWithCleanMemory(const double *mat1, const double *mat2, double *result) {
   memset(result, 0, sizeof(int) * R1 * C2);
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
@@ -44,8 +49,8 @@ void mulMatWithCleanMemory(const int *mat1, const int *mat2, int *result) {
 /*
  * TODO: On tranposed matrix
  */
-void mulMatWithCleanMemoryOnTransposed(const int *mat1, const int *mat2T,
-                                       int *result) {
+void mulMatWithCleanMemoryOnTransposed(const double *mat1, const double *mat2T,
+                                       double *result) {
   memset(result, 0, sizeof(int) * R1 * C2); // Initialize all at once
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
@@ -60,7 +65,7 @@ void mulMatWithCleanMemoryOnTransposed(const int *mat1, const int *mat2T,
  * TODO: Partially unroll(2 of them) the loop
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolled(const int *mat1, const int *mat2T, int *result) {
+void mulMatWithUnrolled(const double *mat1, const double *mat2T, double *result) {
   memset(result, 0, sizeof(int) * R1 * C2);
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
@@ -95,7 +100,7 @@ void mulMatWithUnrolled(const int *mat1, const int *mat2T, int *result) {
  * TODO: Partially unroll(3 of them) the loop
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
-void mulMatWithUnrolledAll(const int *mat1, const int *mat2T, int *result) {
+void mulMatWithUnrolledAll(const double *mat1, const double *mat2T, double *result) {
   memset(result, 0, sizeof(int) * R1 * C2);
   const int stepsize = 2;
   for (int i = 0; i < ROUND_DOWN(R1, stepsize); i += stepsize) {
@@ -141,8 +146,8 @@ void mulMatWithUnrolledAll(const int *mat1, const int *mat2T, int *result) {
   }
 }
 
-void mulMatBlocked(const int *mat1, const int *mat2T, int *result) {
-  const int BLOCK_SIZE = 128; // Cache size
+void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64; // Cache size
   memset(result, 0, sizeof(int) * R1 * C2);
 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
@@ -165,8 +170,8 @@ void mulMatBlocked(const int *mat1, const int *mat2T, int *result) {
 /*
  * TODO: Add unrolling to the blocking
  */
-void mulMatBlockedWithUnroll(const int *mat1, const int *mat2T, int *result) {
-  const int BLOCK_SIZE = 128;
+void mulMatBlockedWithUnroll(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
   const int UNROLL = 2;
   memset(result, 0, sizeof(int) * R1 * C2);
 
@@ -218,7 +223,7 @@ void mulMatBlockedWithUnroll(const int *mat1, const int *mat2T, int *result) {
   }
 }
 
-void transpose(int *ogMat, int *tpMat) {
+void transpose(double *ogMat, double *tpMat) {
   memset(tpMat, 0, sizeof(int) * R2 * C2);
   int cnt = 0;
   for (int i = 0; i < C2; i++) {
@@ -242,12 +247,12 @@ int main() {
     const size_t result_size = (long long)R1 * C2;
 
     // Allocate arrays on heap
-    int *mat1 = new int[matrix1_size];
-    int *mat2 = new int[matrix2_size];
-    int *result = new int[result_size];
-    int *transposed = new int[matrix2_size];
+    double *mat1 = new double[matrix1_size];
+    double *mat2 = new double[matrix2_size];
+    double *result = new double[result_size];
+    double *transposed = new double[matrix2_size];
 
-    if (readIntegersFromCSV("multiply/2048x2048.csv", mat1, matrix1_size) !=
+    if (readDoubleFromCSV("multiply/2048x2048.csv", mat1, matrix1_size) !=
         matrix1_size) {
       std::cout << "Error reading matrix 1\n";
       delete[] mat1;
@@ -257,7 +262,7 @@ int main() {
       return 1;
     }
 
-    if (readIntegersFromCSV("multiply/2048x2048.csv", mat2, matrix2_size) !=
+    if (readDoubleFromCSV("multiply/2048x2048.csv", mat2, matrix2_size) !=
         matrix2_size) {
       std::cout << "Error reading matrix 2\n";
       delete[] mat1;
@@ -329,9 +334,9 @@ int main() {
     writeMatrixToCSV(result, "multiply/blockedUnrolled.csv", R1, C2);
 
     // Add Eigen measurement
-    MatrixXi eigenMat1 = MatrixXi::Map(mat1, R1, C1);
-    MatrixXi eigenMat2 = MatrixXi::Map(mat2, R2, C2);
-    MatrixXi eigenResult(R1, C2);
+    MatrixXd eigenMat1 = MatrixXd::Map(mat1, R1, C1);
+    MatrixXd eigenMat2 = MatrixXd::Map(mat2, R2, C2);
+    MatrixXd eigenResult(R1, C2);
 
     t1 = high_resolution_clock::now();
     eigenResult = eigenMat1 * eigenMat2;

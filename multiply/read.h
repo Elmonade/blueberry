@@ -3,7 +3,7 @@
 
 #include <string>
 
-int readIntegersFromCSV(const std::string &filename, int* arr, int num_integers);
-void writeMatrixToCSV(const int* matrix, const char* filename, int rows, int cols);
+double readDoubleFromCSV(const std::string &filename, double* arr, int num_doubles);
+void writeMatrixToCSV(const double* matrix, const char* filename, int rows, int cols);
 
 #endif

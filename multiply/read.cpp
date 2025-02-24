@@ -4,7 +4,7 @@
 #include <sstream>
 #include <string>
 
-int readIntegersFromCSV(const std::string &filename, int* arr, int num_integers) {
+double readDoubleFromCSV(const std::string &filename, double* arr, int num_doubles) {
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file " << filename << std::endl;
@@ -17,7 +17,7 @@ int readIntegersFromCSV(const std::string &filename, int* arr, int num_integers)
     const int cols = 2048;
 
     // Read row by row
-    for (int i = 0; i < rows && total_integers < num_integers; i++) {
+    for (int i = 0; i < rows && total_integers < num_doubles; i++) {
         if (!std::getline(file, line)) {
             std::cerr << "Error: Unexpected end of file at row " << i << std::endl;
             file.close();
@@ -28,7 +28,7 @@ int readIntegersFromCSV(const std::string &filename, int* arr, int num_integers)
         std::string cell;
         
         // Read each number in the current row
-        for (int j = 0; j < cols && total_integers < num_integers; j++) {
+        for (int j = 0; j < cols && total_integers < num_doubles; j++) {
             if (std::getline(ss, cell, ',')) {
                 try {
                     arr[total_integers] = std::stoi(cell);
@@ -50,7 +50,7 @@ int readIntegersFromCSV(const std::string &filename, int* arr, int num_integers)
     return total_integers;
 }
 
-void writeMatrixToCSV(const int* matrix, const char* filename, int rows, int cols) {
+void writeMatrixToCSV(const double* matrix, const char* filename, int rows, int cols) {
     std::ofstream outFile(filename);
     if (!outFile.is_open()) {
         std::cerr << "Failed to open " << filename << " for writing\n";

@@ -10,7 +10,7 @@ import numpy as np
 import time
 import pandas as pd
 
-def calculate_gflops(milliseconds, R1=1024, C1=2048, C2=1024):
+def calculate_gflops(milliseconds, R1=2, C1=4, C2=2):
     seconds = milliseconds / 1000.0
     operations = 2.0 * R1 * C2 * C1  # 2 operations per multiply-add
     return (operations / seconds) / 1e9  # Convert to GFLOPS
@@ -19,13 +19,13 @@ def calculate_gflops(milliseconds, R1=1024, C1=2048, C2=1024):
 matrix1 = pd.read_csv("multiply/2048x2048.csv", header=None).values
 matrix2 = pd.read_csv("multiply/2048x2048.csv", header=None).values
 
-# Ensure matrices are integer type
+# Ensure matrices are int32 type
 matrix1 = matrix1.astype(np.int32)
 matrix2 = matrix2.astype(np.int32)
 
 # Shape the matrices correctly
-matrix1 = matrix1[:1024, :2048]  # R1xC1 (1024x2048)
-matrix2 = matrix2[:2048, :1024]  # R2xC2 (2048x1024)
+matrix1 = matrix1[:2, :4]  # R1xC1 (2x4)
+matrix2 = matrix2[:4, :2]  # R2xC2 (4x2)
 
 # Measure multiplication time
 start_time = time.time()

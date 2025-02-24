@@ -1,0 +1,3 @@
+CompileFlags:
+  Add: [-I/usr/include/eigen3]
+  Compiler: g++
