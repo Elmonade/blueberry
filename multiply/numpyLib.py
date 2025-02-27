@@ -33,25 +33,26 @@ def read_matrix_from_csv(filename, size):
         raise ValueError(f"Not enough elements in file. Expected {total_elements}, got {len(data)}")
     
     # Only keep the exact number we need
-    data = np.array(data[:total_elements])
+    data = np.array(data[:total_elements]).astype(np.float32)
     print(f"Data loaded, size: {data.size}")
     
     # Reshape into a matrix
-    A = data.reshape(size, size)
+    matrix = data.reshape(size, size)
     print(f"Successfully reshaped into matrix of size {size}x{size}")
-    return A
+    return matrix
 
-def matrix_multiply_benchmark(filename, size=2):
+def matrix_multiply_benchmark(file_a, file_b, size=2):
     try:
-        print(f"Starting benchmark with file: {filename}")
-        A = read_matrix_from_csv(filename, size)
+        print(f"Starting benchmark with files: {file_a} and {file_b}")
+        A = read_matrix_from_csv(file_a, size)
+        B = read_matrix_from_csv(file_b, size)
         
         print("Running warm-up multiplication...")
-        _ = A @ A
+        _ = A @ B
         
         print("Running timed multiplication...")
         start = time.perf_counter()
-        C = A @ A
+        C = A @ B
         end = time.perf_counter()
         
         operations = 2 * size * size * size
@@ -71,4 +72,4 @@ def matrix_multiply_benchmark(filename, size=2):
         return None
 
 if __name__ == "__main__":
-    result = matrix_multiply_benchmark('multiply/2048x2048.csv')
+    result = matrix_multiply_benchmark('multiply/A.csv', 'multiply/B.csv', 2048)

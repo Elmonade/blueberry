@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -march=native -Ofast -fopenmp -lopenblas
+CFLAGS = -Wall -Wextra -march=native -O3 -fopenmp -lopenblas -mavx -mavx2 -mfma -fno-inline
 CXXFLAGS += -I/usr/include/eigen3
 CC = g++
 VPATH = src:multiply/build
@@ -40,7 +40,7 @@ clean :
 	rm -rvf multiply/build
 
 run: multiply/build/bin/matrix_mult
-	./multiply/build/bin/matrix_mult
+	OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 ./multiply/build/bin/matrix_mult
 
 generate: multiply/build/bin/random_gen
 	./multiply/build/bin/random_gen

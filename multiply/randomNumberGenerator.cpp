@@ -6,12 +6,18 @@
 int main() {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::string name = "multiply/2048x2048.csv";
+  std::string A = "multiply/A.csv";
+  std::string B = "multiply/B.csv";
 
-  std::uniform_real_distribution<double> dis(0, 8);
+  std::uniform_real_distribution<double> dis(0, 100);
 
-  std::ofstream file(name);
-  if (!file.is_open()) {
+  std::ofstream fileA(A);
+  if (!fileA.is_open()) {
+    std::cerr << "Error: Could not open file!" << std::endl;
+    return 1;
+  }
+  std::ofstream fileB(B);
+  if (!fileB.is_open()) {
     std::cerr << "Error: Could not open file!" << std::endl;
     return 1;
   }
@@ -21,13 +27,16 @@ int main() {
 
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
-      file << dis(gen);
+      fileA << dis(gen);
+      fileB << dis(gen);
       if (j < cols - 1) {
-        file << ",";
+        fileA << ",";
+        fileB << ",";
       }
     }
     if (i < rows - 1) {
-      file << "\n";
+      fileA << "\n";
+      fileB << "\n";
     }
 
     // Progress indicator
@@ -36,7 +45,9 @@ int main() {
     }
   }
 
-  file.close();
-  std::cout << "File generated: " << name << std::endl;
+  fileA.close();
+  fileB.close();
+  std::cout << "File generated: " << A << std::endl;
+  std::cout << "File generated: " << B << std::endl;
   return 0;
 }
