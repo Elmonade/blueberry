@@ -9,7 +9,7 @@ int main() {
   std::string A = "multiply/A.csv";
   std::string B = "multiply/B.csv";
 
-  std::uniform_real_distribution<double> dis(0, 100);
+  std::uniform_real_distribution<double> dis(0, 2048);
 
   std::ofstream fileA(A);
   if (!fileA.is_open()) {

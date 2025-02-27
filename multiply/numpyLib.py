@@ -33,7 +33,7 @@ def read_matrix_from_csv(filename, size):
         raise ValueError(f"Not enough elements in file. Expected {total_elements}, got {len(data)}")
     
     # Only keep the exact number we need
-    data = np.array(data[:total_elements]).astype(np.float32)
+    data = np.array(data[:total_elements]).astype(np.float64)
     print(f"Data loaded, size: {data.size}")
     
     # Reshape into a matrix
@@ -64,7 +64,7 @@ def matrix_multiply_benchmark(file_a, file_b, size=2):
         print(f"Performance: {gflops:.2f} GFLOPS/s")
         
         print("Saving result...")
-        np.savetxt('multiply/numpyResult.csv', C, delimiter=',')
+        np.savetxt('multiply/numpyResult.csv', C, delimiter=',', fmt='%.5e')
         
         return C
     except Exception as e:
