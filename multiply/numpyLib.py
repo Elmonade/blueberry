@@ -33,7 +33,7 @@ def read_matrix_from_csv(filename, size):
         raise ValueError(f"Not enough elements in file. Expected {total_elements}, got {len(data)}")
     
     # Only keep the exact number we need
-    data = np.array(data[:total_elements]).astype(np.float64)
+    data = np.array(data[:total_elements]).astype(np.float32)
     print(f"Data loaded, size: {data.size}")
     
     # Reshape into a matrix

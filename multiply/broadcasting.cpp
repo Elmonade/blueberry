@@ -39,9 +39,11 @@ void locality(const double *mat1, const double *mat2T, double *result) {
       
       int limit = ROUND_DOWN(C1, UNROLL);
       for (int k = 0; k < limit; k += UNROLL) {
+        // Load 8x64bit 
         __m256d A_vec_0 = _mm256_loadu_pd(&mat1[i * C1 + k]);
         __m256d A_vec_1 = _mm256_loadu_pd(&mat1[i * C1 + k + 4]);
         
+        // Load 8x64bit
         __m256d B_vec_0 = _mm256_loadu_pd(&mat2T[j * C1 + k]);
         __m256d B_vec_1 = _mm256_loadu_pd(&mat2T[j * C1 + k + 4]);
         
@@ -68,29 +70,111 @@ void locality(const double *mat1, const double *mat2T, double *result) {
     }
   }
 }
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+void broadcastedSIMDrollFour(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 4;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            // Initialize sums for unrolled rows
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[(i + 1) * C2 + j];
+            double sum2 = result[(i + 2) * C2 + j];
+            double sum3 = result[(i + 3) * C2 + j];
+            
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
+              
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
+              
+              sum2 += mat1[(i + 2) * C1 + k] * mat2T[j * C1 + k];
+              sum2 += mat1[(i + 2) * C1 + k + 1] * mat2T[j * C1 + k + 1];
+              
+              sum3 += mat1[(i + 3) * C1 + k] * mat2T[j * C1 + k];
+              sum3 += mat1[(i + 3) * C1 + k + 1] * mat2T[j * C1 + k + 1];
+            }
+            
+            // Handle remaining k elements if C1 is not even
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), 2); k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+              sum2 += mat1[(i + 2) * C1 + k] * mat2T[j * C1 + k];
+              sum3 += mat1[(i + 3) * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            // Store results
+            result[i * C2 + j] = sum0;
+            result[(i + 1) * C2 + j] = sum1;
+            result[(i + 2) * C2 + j] = sum2;
+            result[(i + 3) * C2 + j] = sum3;
+          }
+        }
+        
+        // Handle remaining rows that couldn't be unrolled
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum = result[i * C2 + j];
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+void broadcastedSIMD(const double *mat1, const double *mat2T, double *result) {
 
-void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 8;
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 2;
   memset(result, 0, sizeof(double) * R1 * C2);
 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
       for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
 
-        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            // Initialize sums for unrolled rows
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[(i + 1) * C2 + j];
+
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
+
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
+
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
+            }
+
+            // Handle remaining k elements if C1 is not even
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), 2); k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+            }
+
+            // Store results
+            result[i * C2 + j] = sum0;
+            result[(i + 1) * C2 + j] = sum1;
+          }
+        }
+
+        // Handle remaining rows that couldn't be unrolled
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
             double sum = result[i * C2 + j];
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
-              // Load data into AVX vectors
-              //_mm256_loadu2_m128d
-              __m128d a0_vec =  _mm_loaddup_pd(&mat1[i * C1 + k]);
-              __m128d a1_vec =  _mm_loaddup_pd(&mat1[(i+1) * C1 + k]);
-              __m128d b_vec =  _mm_loaddup_pd(&mat2T[j * C1 + k]);
-
-              // Perform FMA operations
-              //C_buffer[0][0] = _mm256_fmadd_ps(a0_vec, b_vec, C_buffer[0][0]);
-              //C_buffer[1][0] = _mm256_fmadd_ps(a1_vec, b_vec, C_buffer[1][0]);
-
               sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
             }
             result[i * C2 + j] = sum;
@@ -101,9 +185,8 @@ void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
   }
 }
 
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 void broadcasted(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 8;
+  const int BLOCK_SIZE = 128;
   const int UNROLL = 2;
   memset(result, 0, sizeof(double) * R1 * C2);
 
@@ -224,7 +307,7 @@ int main() {
 
 
     t1 = high_resolution_clock::now();
-    broadcasted(mat1, mat2, result);
+    broadcasted(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
