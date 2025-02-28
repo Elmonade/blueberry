@@ -37,17 +37,15 @@ void locality_avx512(const double *mat1, const double *mat2T, double *result) {
     for (int j = 0; j < C2; j++) {
       __m512d sum_vec = _mm512_setzero_pd(); // 512-bit zero vector
       
-      // Process 8 elements at a time
       int limit = ROUND_DOWN(C1, unroll);
       for (int k = 0; k < limit; k += unroll) {
-        __m512d A_vec = _mm512_loadu_pd(&mat1[i * C1 + k]); // Load 8 doubles
-        __m512d B_vec = _mm512_loadu_pd(&mat2T[j * C1 + k]); // Load 8 doubles
+        // 512bit = 8 * 64(Double precision float)
+        __m512d A_vec = _mm512_loadu_pd(&mat1[i * C1 + k]);
+        __m512d B_vec = _mm512_loadu_pd(&mat2T[j * C1 + k]);
         
         // Fused multiply-add
         sum_vec = _mm512_fmadd_pd(A_vec, B_vec, sum_vec);
       }
-      
-      // Horizontal sum (much simpler with AVX-512)
       double dotProduct = _mm512_reduce_add_pd(sum_vec);
       
       // Handle remaining elements with scalar operations
@@ -70,11 +68,9 @@ void locality(const double *mat1, const double *mat2T, double *result) {
       
       int limit = ROUND_DOWN(C1, UNROLL);
       for (int k = 0; k < limit; k += UNROLL) {
-        // Load 8x64bit 
         __m256d A_vec_0 = _mm256_loadu_pd(&mat1[i * C1 + k]);
         __m256d A_vec_1 = _mm256_loadu_pd(&mat1[i * C1 + k + 4]);
         
-        // Load 8x64bit
         __m256d B_vec_0 = _mm256_loadu_pd(&mat2T[j * C1 + k]);
         __m256d B_vec_1 = _mm256_loadu_pd(&mat2T[j * C1 + k + 4]);
         
@@ -268,6 +264,117 @@ void broadcasted(const double *mat1, const double *mat2T, double *result) {
   }
 }
 
+/*
+*
+* This might be the best we can do...
+* 
+*/
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+void broadcastedFinal(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 8;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            // Load current result values
+            __m512d sum_vec = _mm512_setr_pd(
+                result[i * C2 + j],
+                result[(i + 1) * C2 + j],
+                result[(i + 2) * C2 + j],
+                result[(i + 3) * C2 + j],
+                result[(i + 4) * C2 + j],
+                result[(i + 5) * C2 + j],
+                result[(i + 6) * C2 + j],
+                result[(i + 7) * C2 + j]
+            );
+            
+            // Process in pairs for better instruction throughput
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
+              // Load 2 elements from matrix B (broadcast each to all 8 positions)
+              __m512d b_vec_0 = _mm512_set1_pd(mat2T[j * C1 + k]);
+              __m512d b_vec_1 = _mm512_set1_pd(mat2T[j * C1 + k + 1]);
+              
+              // Load 8 elements from each row of matrix A for first k
+              __m512d a_vec_0 = _mm512_setr_pd(
+                  mat1[i * C1 + k],
+                  mat1[(i + 1) * C1 + k],
+                  mat1[(i + 2) * C1 + k],
+                  mat1[(i + 3) * C1 + k],
+                  mat1[(i + 4) * C1 + k],
+                  mat1[(i + 5) * C1 + k],
+                  mat1[(i + 6) * C1 + k],
+                  mat1[(i + 7) * C1 + k]
+              );
+              
+              // Load 8 elements from each row of matrix A for k+1
+              __m512d a_vec_1 = _mm512_setr_pd(
+                  mat1[i * C1 + k + 1],
+                  mat1[(i + 1) * C1 + k + 1],
+                  mat1[(i + 2) * C1 + k + 1],
+                  mat1[(i + 3) * C1 + k + 1],
+                  mat1[(i + 4) * C1 + k + 1],
+                  mat1[(i + 5) * C1 + k + 1],
+                  mat1[(i + 6) * C1 + k + 1],
+                  mat1[(i + 7) * C1 + k + 1]
+              );
+              
+              // Perform fused multiply-add operations
+              sum_vec = _mm512_fmadd_pd(a_vec_0, b_vec_0, sum_vec);
+              sum_vec = _mm512_fmadd_pd(a_vec_1, b_vec_1, sum_vec);
+            }
+            
+            // Handle remaining k elements if C1 is not even
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), 2); k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              __m512d b_vec = _mm512_set1_pd(mat2T[j * C1 + k]);
+              __m512d a_vec = _mm512_setr_pd(
+                  mat1[i * C1 + k],
+                  mat1[(i + 1) * C1 + k],
+                  mat1[(i + 2) * C1 + k],
+                  mat1[(i + 3) * C1 + k],
+                  mat1[(i + 4) * C1 + k],
+                  mat1[(i + 5) * C1 + k],
+                  mat1[(i + 6) * C1 + k],
+                  mat1[(i + 7) * C1 + k]
+              );
+              
+              sum_vec = _mm512_fmadd_pd(a_vec, b_vec, sum_vec);
+            }
+            
+            // Store results back to memory
+            double results[8];
+            _mm512_storeu_pd(results, sum_vec);
+            
+            result[i * C2 + j] = results[0];
+            result[(i + 1) * C2 + j] = results[1];
+            result[(i + 2) * C2 + j] = results[2];
+            result[(i + 3) * C2 + j] = results[3];
+            result[(i + 4) * C2 + j] = results[4];
+            result[(i + 5) * C2 + j] = results[5];
+            result[(i + 6) * C2 + j] = results[6];
+            result[(i + 7) * C2 + j] = results[7];
+          }
+        }
+        
+        // Handle remaining rows that couldn't be unrolled
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum = result[i * C2 + j];
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+
 void transpose(double *ogMat, double *tpMat) {
   memset(tpMat, 0, sizeof(double) * R2 * C2);
   int cnt = 0;
@@ -338,7 +445,7 @@ int main() {
 
 
     t1 = high_resolution_clock::now();
-    broadcasted(mat1, transposed, result);
+    broadcastedFinal(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
