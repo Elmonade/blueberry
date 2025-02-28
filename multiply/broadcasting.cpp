@@ -29,6 +29,37 @@ void normal(const double *mat1, const double *mat2, double *result) {
 }
 
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+void locality_avx512(const double *mat1, const double *mat2T, double *result) {
+  int unroll = 8; // Process 8 doubles at once with AVX-512
+  memset(result, 0, sizeof(double) * R1 * C2);
+  
+  for (int i = 0; i < R1; i++) {
+    for (int j = 0; j < C2; j++) {
+      __m512d sum_vec = _mm512_setzero_pd(); // 512-bit zero vector
+      
+      // Process 8 elements at a time
+      int limit = ROUND_DOWN(C1, unroll);
+      for (int k = 0; k < limit; k += unroll) {
+        __m512d A_vec = _mm512_loadu_pd(&mat1[i * C1 + k]); // Load 8 doubles
+        __m512d B_vec = _mm512_loadu_pd(&mat2T[j * C1 + k]); // Load 8 doubles
+        
+        // Fused multiply-add
+        sum_vec = _mm512_fmadd_pd(A_vec, B_vec, sum_vec);
+      }
+      
+      // Horizontal sum (much simpler with AVX-512)
+      double dotProduct = _mm512_reduce_add_pd(sum_vec);
+      
+      // Handle remaining elements with scalar operations
+      for (int k = limit; k < C1; k++) {
+        dotProduct += mat1[i * C1 + k] * mat2T[j * C1 + k];
+      }
+      
+      result[i * C2 + j] = dotProduct;
+    }
+  }
+}
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 void locality(const double *mat1, const double *mat2T, double *result) {
   int UNROLL = 8;
   memset(result, 0, sizeof(double) * R1 * C2);
@@ -297,7 +328,7 @@ int main() {
 
 
     t1 = high_resolution_clock::now();
-    locality(mat1, transposed, result);
+    locality_avx512(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
