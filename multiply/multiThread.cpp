@@ -14,57 +14,132 @@ using std::chrono::milliseconds;
 #define USE_AVX 1
 #define USE_FMA 1
 
-#define R1 1024
-#define C1 1024
-#define R2 1024
-#define C2 1024
+#define R1 4096
+#define C1 4096
+#define R2 4096
+#define C2 4096
 
-void multiply(double *a, double *b_trans, double *c, int m, int n, int k) {
-  // m = rows of A and C
-  // k = cols of A, rows of B (original B)
-  // n = cols of B and C
-  const int BLOCK_SIZE = 64;
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 
-  // Zero out result matrix
-  memset(c, 0, sizeof(double) * m * n);
+void multiply(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 128; // Using the optimized block size of 128
+  const int UNROLL = 8; // 8 * double = 512
 
-#pragma omp parallel for collapse(2)
-  for (int i = 0; i < m; i += BLOCK_SIZE) {
-    for (int j = 0; j < n; j += BLOCK_SIZE) {
-      for (int l = 0; l < k; l += BLOCK_SIZE) {
-        int i_end = std::min(i + BLOCK_SIZE, m);
-        int j_end = std::min(j + BLOCK_SIZE, n);
-        int l_end = std::min(l + BLOCK_SIZE, k);
+  memset(result, 0, sizeof(double) * R1 * C2);
 
-        for (int ii = i; ii < i_end; ii++) {
-          for (int jj = j; jj < j_end; jj += 8) { // AVX-512 processes 8 doubles
-            __m512d c_vec = _mm512_loadu_pd(c + ii * n + jj);
+  // Parallelize the outermost two loops
+  #pragma omp parallel for collapse(2)
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        // UNROLL
+        int iLimit = std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1);
+        int jLimit = std::min(j0 + BLOCK_SIZE, C2);
+        int kLimit = std::min(k0 + BLOCK_SIZE, C1 - UNROLL + 1);
 
-            for (int ll = l; ll < l_end; ll += 4) { // Unroll by 4
-              if (ll + 3 < l_end) {
-                __m512d a_vec0 = _mm512_set1_pd(a[ii * k + ll]);
-                __m512d a_vec1 = _mm512_set1_pd(a[ii * k + ll + 1]);
-                __m512d a_vec2 = _mm512_set1_pd(a[ii * k + ll + 2]);
-                __m512d a_vec3 = _mm512_set1_pd(a[ii * k + ll + 3]);
+        for (int i = i0; i < iLimit; i += UNROLL) {
+          for (int j = j0; j < jLimit; j++) {
+            // Load current values from local buffer
+            __m512d sum0 = _mm512_set1_pd(0.0);
+            __m512d sum1 = _mm512_set1_pd(0.0);
+            __m512d sum2 = _mm512_set1_pd(0.0);
+            __m512d sum3 = _mm512_set1_pd(0.0);
+            __m512d sum4 = _mm512_set1_pd(0.0);
+            __m512d sum5 = _mm512_set1_pd(0.0);
+            __m512d sum6 = _mm512_set1_pd(0.0);
+            __m512d sum7 = _mm512_set1_pd(0.0);
 
-                __m512d b_vec0 = _mm512_loadu_pd(b_trans + ll * n + jj);
-                __m512d b_vec1 = _mm512_loadu_pd(b_trans + (ll + 1) * n + jj);
-                __m512d b_vec2 = _mm512_loadu_pd(b_trans + (ll + 2) * n + jj);
-                __m512d b_vec3 = _mm512_loadu_pd(b_trans + (ll + 3) * n + jj);
+            for (int k = k0; k < kLimit; k += UNROLL) {
+              // Add prefetching for upcoming data
+              //_mm_prefetch((char*)&mat2T[j * C1 + k + 64], _MM_HINT_T0);
+              //_mm_prefetch((char*)&mat1[i * C1 + k + 64], _MM_HINT_T0);
+              
+              __m512d m2 = _mm512_loadu_pd(&mat2T[j * C1 + k]);
 
-                c_vec = _mm512_fmadd_pd(a_vec0, b_vec0, c_vec);
-                c_vec = _mm512_fmadd_pd(a_vec1, b_vec1, c_vec);
-                c_vec = _mm512_fmadd_pd(a_vec2, b_vec2, c_vec);
-                c_vec = _mm512_fmadd_pd(a_vec3, b_vec3, c_vec);
-              } else {
-                for (; ll < l_end; ll++) {
-                  __m512d a_vec = _mm512_set1_pd(a[ii * k + ll]);
-                  __m512d b_vec = _mm512_loadu_pd(b_trans + ll * n + jj);
-                  c_vec = _mm512_fmadd_pd(a_vec, b_vec, c_vec);
-                }
-              }
+              __m512d m1_0 = _mm512_loadu_pd(&mat1[i * C1 + k]);
+              sum0 = _mm512_fmadd_pd(m1_0, m2, sum0);
+
+              __m512d m1_1 = _mm512_loadu_pd(&mat1[(i + 1) * C1 + k]);
+              sum1 = _mm512_fmadd_pd(m1_1, m2, sum1);
+
+              __m512d m1_2 = _mm512_loadu_pd(&mat1[(i + 2) * C1 + k]);
+              sum2 = _mm512_fmadd_pd(m1_2, m2, sum2);
+
+              __m512d m1_3 = _mm512_loadu_pd(&mat1[(i + 3) * C1 + k]);
+              sum3 = _mm512_fmadd_pd(m1_3, m2, sum3);
+
+              __m512d m1_4 = _mm512_loadu_pd(&mat1[(i + 4) * C1 + k]);
+              sum4 = _mm512_fmadd_pd(m1_4, m2, sum4);
+
+              __m512d m1_5 = _mm512_loadu_pd(&mat1[(i + 5) * C1 + k]);
+              sum5 = _mm512_fmadd_pd(m1_5, m2, sum5);
+
+              __m512d m1_6 = _mm512_loadu_pd(&mat1[(i + 6) * C1 + k]);
+              sum6 = _mm512_fmadd_pd(m1_6, m2, sum6);
+
+              __m512d m1_7 = _mm512_loadu_pd(&mat1[(i + 7) * C1 + k]);
+              sum7 = _mm512_fmadd_pd(m1_7, m2, sum7);
             }
-            _mm512_storeu_pd(c + ii * n + jj, c_vec);
+
+            // Vector -> Scalar
+            double hsum0 = _mm512_reduce_add_pd(sum0);
+            double hsum1 = _mm512_reduce_add_pd(sum1);
+            double hsum2 = _mm512_reduce_add_pd(sum2);
+            double hsum3 = _mm512_reduce_add_pd(sum3);
+            double hsum4 = _mm512_reduce_add_pd(sum4);
+            double hsum5 = _mm512_reduce_add_pd(sum5);
+            double hsum6 = _mm512_reduce_add_pd(sum6);
+            double hsum7 = _mm512_reduce_add_pd(sum7);
+
+            // Handle remaining k values that couldn't be vectorized
+            int kRemainderLimit = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL);
+            for (int k = kRemainderLimit; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              double m2_val = mat2T[j * C1 + k];
+
+              hsum0 += mat1[i * C1 + k] * m2_val;
+              hsum1 += mat1[(i + 1) * C1 + k] * m2_val;
+              hsum2 += mat1[(i + 2) * C1 + k] * m2_val;
+              hsum3 += mat1[(i + 3) * C1 + k] * m2_val;
+              hsum4 += mat1[(i + 4) * C1 + k] * m2_val;
+              hsum5 += mat1[(i + 5) * C1 + k] * m2_val;
+              hsum6 += mat1[(i + 6) * C1 + k] * m2_val;
+              hsum7 += mat1[(i + 7) * C1 + k] * m2_val;
+            }
+
+            // Store to local buffer
+            result[i * C2 + j] += hsum0;
+            result[(i + 1) * C2 + j] += hsum1;
+            result[(i + 2) * C2 + j] += hsum2;
+            result[(i + 3) * C2 + j] += hsum3;
+            result[(i + 4) * C2 + j] += hsum4;
+            result[(i + 5) * C2 + j] += hsum5;
+            result[(i + 6) * C2 + j] += hsum6;
+            result[(i + 7) * C2 + j] += hsum7;
+          }
+        }
+
+        // Handle remaining rows that couldn't be unrolled
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL); i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            // Use scalar operations for remaining rows
+            double sum = result[i * C2 + j];
+
+            // Try to vectorize k loops even for remaining rows
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - UNROLL + 1); k += UNROLL) {
+              __m512d m1 = _mm512_loadu_pd(&mat1[i * C1 + k]);
+              __m512d m2 = _mm512_loadu_pd(&mat2T[j * C1 + k]);
+              __m512d prod = _mm512_mul_pd(m1, m2);
+              sum += _mm512_reduce_add_pd(prod);
+            }
+
+            // Handle remaining k values
+            int k_limit = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL);
+            for (int k = k_limit; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+
+            result[i * C2 + j] = sum;
           }
         }
       }
@@ -124,7 +199,7 @@ int main() {
 
     // Custom multiplication
     auto t1 = high_resolution_clock::now();
-    multiply(mat1, transposed, result, R1, C2, C1);
+    multiply(mat1, transposed, result);
     auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
 

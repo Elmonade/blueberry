@@ -14,8 +14,8 @@ double readDoubleFromCSV(const std::string &filename, double *arr, int num_doubl
 
   std::string line;
   int total_doubles = 0;
-  const int rows = 2048;
-  const int cols = 2048;
+  const int rows = 4096;
+  const int cols = 4096;
 
   // Read row by row
   for (int i = 0; i < rows && total_doubles < num_doubles; i++) {

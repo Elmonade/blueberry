@@ -147,7 +147,7 @@ void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 64;
-  const int UNROLL = 4;
+  const int UNROLL = 8;
   memset(result, 0, sizeof(double) * R1 * C2);
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
@@ -160,6 +160,10 @@ void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double 
             double sum1 = result[(i + 1) * C2 + j];
             double sum2 = result[(i + 2) * C2 + j];
             double sum3 = result[(i + 3) * C2 + j];
+            double sum4 = result[(i + 4) * C2 + j];
+            double sum5 = result[(i + 5) * C2 + j];
+            double sum6 = result[(i + 6) * C2 + j];
+            double sum7 = result[(i + 7) * C2 + j];
             
             // Regular k loop (no unrolling)
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
@@ -167,6 +171,10 @@ void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double 
               sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
               sum2 += mat1[(i + 2) * C1 + k] * mat2T[j * C1 + k];
               sum3 += mat1[(i + 3) * C1 + k] * mat2T[j * C1 + k];
+              sum4 += mat1[(i + 4) * C1 + k] * mat2T[j * C1 + k];
+              sum5 += mat1[(i + 5) * C1 + k] * mat2T[j * C1 + k];
+              sum6 += mat1[(i + 6) * C1 + k] * mat2T[j * C1 + k];
+              sum7 += mat1[(i + 7) * C1 + k] * mat2T[j * C1 + k];
             }
             
             // Store results
@@ -174,6 +182,10 @@ void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double 
             result[(i + 1) * C2 + j] = sum1;
             result[(i + 2) * C2 + j] = sum2;
             result[(i + 3) * C2 + j] = sum3;
+            result[(i + 4) * C2 + j] = sum4;
+            result[(i + 5) * C2 + j] = sum5;
+            result[(i + 6) * C2 + j] = sum6;
+            result[(i + 7) * C2 + j] = sum7;
           }
         }
         

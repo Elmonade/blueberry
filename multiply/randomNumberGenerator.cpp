@@ -22,8 +22,8 @@ int main() {
     return 1;
   }
 
-  const int rows = 2048;
-  const int cols = 2048;
+  const int rows = 4096;
+  const int cols = 4096;
 
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
