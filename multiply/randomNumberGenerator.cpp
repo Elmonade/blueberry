@@ -6,8 +6,8 @@
 int main() {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::string A = "multiply/A.csv";
-  std::string B = "multiply/B.csv";
+  std::string A = "data/A.csv";
+  std::string B = "data/B.csv";
 
   std::uniform_real_distribution<double> dis(0, 2048);
 

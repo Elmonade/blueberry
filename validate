@@ -41,13 +41,23 @@ file_count=0
 diff_found=0
 
 for csv_file in "$directory"/*.csv; do
-    # Skip if not a file or if it's the reference file
-    if [ ! -f "$csv_file" ] || [ "$(realpath "$csv_file")" = "$(realpath "$reference_file")" ]; then
+    # Skip if not a file
+    if [ ! -f "$csv_file" ]; then
+        continue
+    fi
+    
+    # Get the basename for easier checking
+    basename_file=$(basename "$csv_file")
+    
+    # Skip reference file, A.csv and B.csv
+    if [ "$(realpath "$csv_file")" = "$(realpath "$reference_file")" ] || 
+       [ "$basename_file" = "A.csv" ] || 
+       [ "$basename_file" = "B.csv" ]; then
         continue
     fi
     
     file_count=$((file_count + 1))
-    echo "Comparing with: $(basename "$csv_file")"
+    echo "Comparing with: $basename_file"
     
     # Run diff and capture its exit status
     diff "$reference_file" "$csv_file" > /dev/null
@@ -66,7 +76,7 @@ for csv_file in "$directory"/*.csv; do
 done
 
 if [ $file_count -eq 0 ]; then
-    echo "No CSV files found in '$directory' (excluding the reference file)."
+    echo "No CSV files found in '$directory' for comparison (excluding the reference file, A.csv, and B.csv)."
 else
     echo "Summary: $diff_found of $file_count files differ from the reference."
 fi

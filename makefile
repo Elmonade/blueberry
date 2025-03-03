@@ -1,61 +1,62 @@
 CXXFLAGS = -Wall -Wextra -march=native -Ofast -fopenmp -lopenblas
 CC = g++
-VPATH = src:multiply/build
+VPATH = src:multiply:build
 
-multiply/build/bin/matrix_mult : multiply/singleThread.o multiply/read.o
-	mkdir -p multiply/build/bin
+build/bin/matrix_mult : build/singleThread.o build/read.o
+	mkdir -p build/bin
 	$(CC) $(CXXFLAGS) $^ -o $@
 
-multiply/build/bin/random_gen : multiply/randomNumberGenerator.o
-	mkdir -p multiply/build/bin
+build/bin/random_gen : build/randomNumberGenerator.o
+	mkdir -p build/bin
 	$(CC) $(CXXFLAGS) $^ -o $@
 
-multiply/build/bin/multi: multiply/multiThread.o multiply/read.o
-	mkdir -p multiply/build/bin
+build/bin/multi: build/multiThread.o build/read.o
+	mkdir -p build/bin
 	$(CC) $(CXXFLAGS) $^ -o $@
 
-multiply/build/bin/broadcasting: multiply/broadcasting.o multiply/read.o
-	mkdir -p multiply/build/bin
+build/bin/broadcasting: build/broadcasting.o build/read.o
+	mkdir -p build/bin
 	$(CC) $(CXXFLAGS) $^ -o $@
 
-multiply/build/read.o : multiply/read.cpp
+build/read.o : multiply/read.cpp
+	mkdir -p build
 	$(CC) $(CXXFLAGS) -c $? -o $@
 
-multiply/build/multiplier.o : multiply/multiplier.cpp
-	mkdir -p multiply/build
+build/multiplier.o : multiply/multiplier.cpp
+	mkdir -p build
 	$(CC) $(CXXFLAGS) -c $? -o $@
 
-multiply/build/singleThread.o : multiply/singleThread.cpp
-	mkdir -p multiply/build
+build/singleThread.o : multiply/singleThread.cpp
+	mkdir -p build
 	$(CC) $(CXXFLAGS) -c $? -o $@
 
-multiply/build/multiThread.o : multiply/multiThread.cpp
-	mkdir -p multiply/build
+build/multiThread.o : multiply/multiThread.cpp
+	mkdir -p build
 	$(CC) $(CXXFLAGS) -c $? -o $@
 
-multiply/build/broadcasting.o : multiply/broadcasting.cpp
-	mkdir -p multiply/build
+build/broadcasting.o : multiply/broadcasting.cpp
+	mkdir -p build
 	$(CC) $(CXXFLAGS) -c $? -o $@
 
-
-multiply/build/randomNumberGenerator.o : multiply/randomNumberGenerator.cpp
+build/randomNumberGenerator.o : multiply/randomNumberGenerator.cpp
+	mkdir -p build
 	$(CC) $(CXXFLAGS) -c $? -o $@
 
-.PHONY = clean run generate multi
+.PHONY = clean run generate multi broad all
 
 clean :
-	rm -rvf multiply/build
+	rm -rvf build
 
-run: multiply/build/bin/matrix_mult
-	OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 ./multiply/build/bin/matrix_mult
+run: build/bin/matrix_mult
+	OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 ./build/bin/matrix_mult
 
-generate: multiply/build/bin/random_gen
-	./multiply/build/bin/random_gen
+generate: build/bin/random_gen
+	./build/bin/random_gen
 
-multi: multiply/build/bin/multi
-	./multiply/build/bin/multi
+multi: build/bin/multi
+	./build/bin/multi
 
-broad: multiply/build/bin/broadcasting
-	./multiply/build/bin/broadcasting
+broad: build/bin/broadcasting
+	./build/bin/broadcasting
 
-all: multiply/build/bin/matrix_mult multiply/build/bin/random_gen
+all: build/bin/matrix_mult build/bin/random_gen

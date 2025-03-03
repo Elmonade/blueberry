@@ -4,18 +4,17 @@
 #include <cstring>
 #include <iostream>
 #include "read.h"
-#include <x86intrin.h>
-#include <immintrin.h>  // For AVX/FMA intrinsics
+#include <immintrin.h>
 
 using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 2043
-#define C1 2043
+#define R1 2048
+#define C1 2048
 
-#define R2 2043
-#define C2 2043
+#define R2 2048
+#define C2 2048
 
 void normal(const double *mat1, const double *mat2, double *result) {
   memset(result, 0, sizeof(double) * R1 * C2);
@@ -322,7 +321,6 @@ void broadcastedFinal(const double *mat1, const double *mat2T, double *result) {
                   mat1[(i + 7) * C1 + k + 1]
               );
               
-              // Perform fused multiply-add operations
               sum_vec = _mm512_fmadd_pd(a_vec_0, b_vec_0, sum_vec);
               sum_vec = _mm512_fmadd_pd(a_vec_1, b_vec_1, sum_vec);
             }
@@ -404,7 +402,7 @@ int main() {
     double *result = new double[result_size];
     double *transposed = new double[matrix2_size];
 
-    if (readDoubleFromCSV("multiply/A.csv", mat1, matrix1_size) != matrix1_size) {
+    if (readDoubleFromCSV("data/A.csv", mat1, matrix1_size) != matrix1_size) {
       std::cout << "Error reading matrix A\n";
       delete[] mat1;
       delete[] mat2;
@@ -413,7 +411,7 @@ int main() {
       return 1;
     }
 
-    if (readDoubleFromCSV("multiply/B.csv", mat2, matrix2_size) != matrix2_size) {
+    if (readDoubleFromCSV("data/B.csv", mat2, matrix2_size) != matrix2_size) {
       std::cout << "Error reading matrix B\n";
       delete[] mat1;
       delete[] mat2;
@@ -431,7 +429,7 @@ int main() {
 
     std::cout << "\nBlocked Time = " << ms_double.count() << "ms\n";
     std::cout << "Normal = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/normal.csv", R1, C2);
+    writeMatrixToCSV(result, "data/normal.csv", R1, C2);
 
 
     t1 = high_resolution_clock::now();
@@ -441,7 +439,7 @@ int main() {
 
     std::cout << "\nSIMD Time = " << ms_double.count() << "ms\n";
     std::cout << "SIMD= " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/simd.csv", R1, C2);
+    writeMatrixToCSV(result, "data/simd.csv", R1, C2);
 
 
     t1 = high_resolution_clock::now();
@@ -452,7 +450,7 @@ int main() {
     std::cout << "\nBroadcasted Time = " << ms_double.count() << "ms\n";
     std::cout << "Blocked and Unrolled Performance = " << calculateGFLOPS(ms_double.count())
               << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/broadcasted.csv", R1, C2);
+    writeMatrixToCSV(result, "data/broadcasted.csv", R1, C2);
 
     // Add OpenBLAS
     t1 = high_resolution_clock::now();
@@ -476,7 +474,7 @@ int main() {
 
     std::cout << "\nOpenBLAS Time = " << ms_double.count() << "ms\n";
     std::cout << "OpenBLAS Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/openblas.csv", R1, C2);
+    writeMatrixToCSV(result, "data/openblas.csv", R1, C2);
 
     // Clean up
     delete[] mat1;

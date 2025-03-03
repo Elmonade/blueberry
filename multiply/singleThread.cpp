@@ -143,11 +143,373 @@ void mulMatBlocked(const double *mat1, const double *mat2T, double *result) {
     }
   }
 }
+
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 4;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        // Unroll i by 2
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            // Initialize sums for unrolled rows
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[(i + 1) * C2 + j];
+            double sum2 = result[(i + 2) * C2 + j];
+            double sum3 = result[(i + 3) * C2 + j];
+            
+            // Regular k loop (no unrolling)
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+              sum2 += mat1[(i + 2) * C1 + k] * mat2T[j * C1 + k];
+              sum3 += mat1[(i + 3) * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            // Store results
+            result[i * C2 + j] = sum0;
+            result[(i + 1) * C2 + j] = sum1;
+            result[(i + 2) * C2 + j] = sum2;
+            result[(i + 3) * C2 + j] = sum3;
+          }
+        }
+        
+        // Handle remaining rows that couldn't be unrolled
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum = result[i * C2 + j];
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+void mulMatWithUnrolledBlockedK(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 8;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        // Regular loop for i dimension (no unrolling)
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum = result[i * C2 + j];
+            
+            // Unrolled k loop
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
+              sum += mat1[i * C1 + k + 2] * mat2T[j * C1 + k + 2];
+              sum += mat1[i * C1 + k + 3] * mat2T[j * C1 + k + 3];
+              sum += mat1[i * C1 + k + 4] * mat2T[j * C1 + k + 4];
+              sum += mat1[i * C1 + k + 5] * mat2T[j * C1 + k + 5];
+              sum += mat1[i * C1 + k + 6] * mat2T[j * C1 + k + 6];
+              sum += mat1[i * C1 + k + 7] * mat2T[j * C1 + k + 7];
+            }
+            
+            // Handle remaining k elements if C1 is not divisible by UNROLL
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL); 
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            // Store result
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+
+void mulMatWithUnrolledBlockedAll(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 2;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        // Unroll i by 2
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
+          // Unroll j by 2
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2 - UNROLL + 1); j += UNROLL) {
+            // Initialize sums for 2x2 block of results
+            double sum00 = result[i * C2 + j];
+            double sum01 = result[i * C2 + (j+1)];
+            double sum10 = result[(i+1) * C2 + j];
+            double sum11 = result[(i+1) * C2 + (j+1)];
+            
+            // Unroll k by 2
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
+              // First row, first column
+              sum00 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum00 += mat1[i * C1 + (k+1)] * mat2T[j * C1 + (k+1)];
+              
+              // First row, second column
+              sum01 += mat1[i * C1 + k] * mat2T[(j+1) * C1 + k];
+              sum01 += mat1[i * C1 + (k+1)] * mat2T[(j+1) * C1 + (k+1)];
+              
+              // Second row, first column
+              sum10 += mat1[(i+1) * C1 + k] * mat2T[j * C1 + k];
+              sum10 += mat1[(i+1) * C1 + (k+1)] * mat2T[j * C1 + (k+1)];
+              
+              // Second row, second column
+              sum11 += mat1[(i+1) * C1 + k] * mat2T[(j+1) * C1 + k];
+              sum11 += mat1[(i+1) * C1 + (k+1)] * mat2T[(j+1) * C1 + (k+1)];
+            }
+            
+            // Handle remaining k elements if C1 is not divisible by 2
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL); 
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum00 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum01 += mat1[i * C1 + k] * mat2T[(j+1) * C1 + k];
+              sum10 += mat1[(i+1) * C1 + k] * mat2T[j * C1 + k];
+              sum11 += mat1[(i+1) * C1 + k] * mat2T[(j+1) * C1 + k];
+            }
+            
+            // Store results
+            result[i * C2 + j] = sum00;
+            result[i * C2 + (j+1)] = sum01;
+            result[(i+1) * C2 + j] = sum10;
+            result[(i+1) * C2 + (j+1)] = sum11;
+          }
+          
+          // Handle remaining j elements
+          for (int j = ROUND_DOWN(std::min(j0 + BLOCK_SIZE, C2), UNROLL); 
+               j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[(i+1) * C2 + j];
+            
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum0 += mat1[i * C1 + (k+1)] * mat2T[j * C1 + (k+1)];
+              sum1 += mat1[(i+1) * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i+1) * C1 + (k+1)] * mat2T[j * C1 + (k+1)];
+            }
+            
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL); 
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i+1) * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            result[i * C2 + j] = sum0;
+            result[(i+1) * C2 + j] = sum1;
+          }
+        }
+        
+        // Handle remaining i elements
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL); 
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2 - UNROLL + 1); j += UNROLL) {
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[i * C2 + (j+1)];
+            
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum0 += mat1[i * C1 + (k+1)] * mat2T[j * C1 + (k+1)];
+              sum1 += mat1[i * C1 + k] * mat2T[(j+1) * C1 + k];
+              sum1 += mat1[i * C1 + (k+1)] * mat2T[(j+1) * C1 + (k+1)];
+            }
+            
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL); 
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[i * C1 + k] * mat2T[(j+1) * C1 + k];
+            }
+            
+            result[i * C2 + j] = sum0;
+            result[i * C2 + (j+1)] = sum1;
+          }
+          
+          // Handle remaining j elements for the remaining i
+          for (int j = ROUND_DOWN(std::min(j0 + BLOCK_SIZE, C2), UNROLL); 
+               j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum = result[i * C2 + j];
+            
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum += mat1[i * C1 + (k+1)] * mat2T[j * C1 + (k+1)];
+            }
+            
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL); 
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+void mulMatWithUnrolledBlockedIJ(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 2;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        // Unroll i by 2
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
+          // Unroll j by 2
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2 - UNROLL + 1); j += UNROLL) {
+            // Initialize sums for 2x2 block of results
+            double sum00 = result[i * C2 + j];
+            double sum01 = result[i * C2 + (j + 1)];
+            double sum10 = result[(i + 1) * C2 + j];
+            double sum11 = result[(i + 1) * C2 + (j + 1)];
+            
+            // Regular k loop (no unrolling)
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              // First row, first column
+              sum00 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              
+              // First row, second column
+              sum01 += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
+              
+              // Second row, first column
+              sum10 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+              
+              // Second row, second column
+              sum11 += mat1[(i + 1) * C1 + k] * mat2T[(j + 1) * C1 + k];
+            }
+            
+            // Store results
+            result[i * C2 + j] = sum00;
+            result[i * C2 + (j + 1)] = sum01;
+            result[(i + 1) * C2 + j] = sum10;
+            result[(i + 1) * C2 + (j + 1)] = sum11;
+          }
+          
+          // Handle remaining j elements for unrolled i
+          for (int j = ROUND_DOWN(std::min(j0 + BLOCK_SIZE, C2), UNROLL); 
+               j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[(i + 1) * C2 + j];
+            
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            result[i * C2 + j] = sum0;
+            result[(i + 1) * C2 + j] = sum1;
+          }
+        }
+        
+        // Handle remaining i elements
+        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
+             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          // Process unrolled j for remaining i
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2 - UNROLL + 1); j += UNROLL) {
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[i * C2 + (j + 1)];
+            
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
+            }
+            
+            result[i * C2 + j] = sum0;
+            result[i * C2 + (j + 1)] = sum1;
+          }
+          
+          // Handle remaining j elements for remaining i (corner case)
+          for (int j = ROUND_DOWN(std::min(j0 + BLOCK_SIZE, C2), UNROLL); 
+               j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum = result[i * C2 + j];
+            
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+void mulMatWithUnrolledBlockedJK(const double *mat1, const double *mat2T, double *result) {
+  const int BLOCK_SIZE = 64;
+  const int UNROLL = 2;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
+    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
+      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
+        // Regular loop for i dimension (no unrolling)
+        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
+          // Unroll j by 2
+          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2 - UNROLL + 1); j += UNROLL) {
+            // Initialize sums for unrolled columns
+            double sum0 = result[i * C2 + j];
+            double sum1 = result[i * C2 + (j + 1)];
+            
+            // Unroll k by 2
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
+              // For the first column
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum0 += mat1[i * C1 + (k + 1)] * mat2T[j * C1 + (k + 1)];
+              
+              // For the second column
+              sum1 += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
+              sum1 += mat1[i * C1 + (k + 1)] * mat2T[(j + 1) * C1 + (k + 1)];
+            }
+            
+            // Handle remaining k elements if C1 is not even
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL); 
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum1 += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
+            }
+            
+            // Store results
+            result[i * C2 + j] = sum0;
+            result[i * C2 + (j + 1)] = sum1;
+          }
+          
+          // Handle remaining j elements
+          for (int j = ROUND_DOWN(std::min(j0 + BLOCK_SIZE, C2), UNROLL);
+               j < std::min(j0 + BLOCK_SIZE, C2); j++) {
+            double sum = result[i * C2 + j];
+            
+            // Still unroll k for remaining j
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+              sum += mat1[i * C1 + (k + 1)] * mat2T[j * C1 + (k + 1)];
+            }
+            
+            // Handle remaining k elements
+            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL); 
+                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
+              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+            }
+            
+            result[i * C2 + j] = sum;
+          }
+        }
+      }
+    }
+  }
+}
+
 /*
  * TODO: Add unrolling to the blocking
  */
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
-
 void mulMatWithUnrolledBlocked(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 64;
   const int UNROLL = 2;
@@ -163,7 +525,7 @@ void mulMatWithUnrolledBlocked(const double *mat1, const double *mat2T, double *
             double sum0 = result[i * C2 + j];
             double sum1 = result[(i + 1) * C2 + j];
 
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
+            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
               sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
               sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
 
@@ -281,7 +643,7 @@ int main() {
     double *result = new double[result_size];
     double *transposed = new double[matrix2_size];
 
-    if (readDoubleFromCSV("multiply/A.csv", mat1, matrix1_size) != matrix1_size) {
+    if (readDoubleFromCSV("data/A.csv", mat1, matrix1_size) != matrix1_size) {
       std::cout << "Error reading matrix A\n";
       delete[] mat1;
       delete[] mat2;
@@ -290,7 +652,7 @@ int main() {
       return 1;
     }
 
-    if (readDoubleFromCSV("multiply/B.csv", mat2, matrix2_size) != matrix2_size) {
+    if (readDoubleFromCSV("data/B.csv", mat2, matrix2_size) != matrix2_size) {
       std::cout << "Error reading matrix B\n";
       delete[] mat1;
       delete[] mat2;
@@ -308,7 +670,7 @@ int main() {
 
     std::cout << "\nBlocked Time = " << ms_double.count() << "ms\n";
     std::cout << "Blocked Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/blocked.csv", R1, C2);
+    writeMatrixToCSV(result, "data/blocked.csv", R1, C2);
 
 
     t1 = high_resolution_clock::now();
@@ -318,18 +680,18 @@ int main() {
 
     std::cout << "\nUnrolled All Time = " << ms_double.count() << "ms\n";
     std::cout << "Unrolled All Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/unrolled.csv", R1, C2);
+    writeMatrixToCSV(result, "data/unrolled.csv", R1, C2);
 
 
     t1 = high_resolution_clock::now();
-    mulMatWithUnrolledBlocked(mat1, transposed, result);
+    mulMatWithUnrolledBlockedI(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
     std::cout << "\nBlocked and Unrolled Time = " << ms_double.count() << "ms\n";
     std::cout << "Blocked and Unrolled Performance = " << calculateGFLOPS(ms_double.count())
               << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/blockedUnrolled.csv", R1, C2);
+    writeMatrixToCSV(result, "data/blockedUnrolled.csv", R1, C2);
 
     // Add OpenBLAS
     t1 = high_resolution_clock::now();
@@ -353,7 +715,7 @@ int main() {
 
     std::cout << "\nOpenBLAS Time = " << ms_double.count() << "ms\n";
     std::cout << "OpenBLAS Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "multiply/openblas.csv", R1, C2);
+    writeMatrixToCSV(result, "data/openblas.csv", R1, C2);
 
     // Clean up
     delete[] mat1;
