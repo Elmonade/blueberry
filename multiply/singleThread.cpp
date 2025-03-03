@@ -75,6 +75,96 @@ void mulMatWithUnrolled(const double *mat1, const double *mat2T, double *result)
   }
 }
 /*
+ * TODO: Partially unroll(2 of them) the loop
+ */
+void mulMatWithUnrolledK(const double *mat1, const double *mat2T, double *result) {
+  int UNROLL = 8;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  for (int i = 0; i < R1; i++) {
+    for (int j = 0; j < C2; j++) {
+      for (int k = 0; k < C1; k+=UNROLL) {
+        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        result[i * C2 + j] += mat1[i * C1 + k + 1] * mat2T[j * C1 + k+1];
+        result[i * C2 + j] += mat1[i * C1 + k + 2] * mat2T[j * C1 + k+2];
+        result[i * C2 + j] += mat1[i * C1 + k + 3] * mat2T[j * C1 + k+3];
+        result[i * C2 + j] += mat1[i * C1 + k + 4] * mat2T[j * C1 + k+4];
+        result[i * C2 + j] += mat1[i * C1 + k + 5] * mat2T[j * C1 + k+5];
+        result[i * C2 + j] += mat1[i * C1 + k + 6] * mat2T[j * C1 + k+6];
+        result[i * C2 + j] += mat1[i * C1 + k + 7] * mat2T[j * C1 + k+7];
+      }
+    }
+  }
+}
+
+void mulMatWithUnrolledJ(const double *mat1, const double *mat2T, double *result) {
+  const int UNROLL = 8;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  
+  for (int i = 0; i < R1; i++) {
+    // Process columns in groups of UNROLL
+    for (int j = 0; j < C2; j += UNROLL) {
+      double sum0 = 0, sum1 = 0, sum2 = 0, sum3 = 0;
+      double sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0;
+      
+      for (int k = 0; k < C1; k++) {
+        // Cache the mat1 value since it's used in all iterations
+        double a_val = mat1[i * C1 + k];
+        
+        // Process 8 columns at once
+        sum0 += a_val * mat2T[j * C1 + k];
+        sum1 += a_val * mat2T[(j + 1) * C1 + k];
+        sum2 += a_val * mat2T[(j + 2) * C1 + k];
+        sum3 += a_val * mat2T[(j + 3) * C1 + k];
+        sum4 += a_val * mat2T[(j + 4) * C1 + k];
+        sum5 += a_val * mat2T[(j + 5) * C1 + k];
+        sum6 += a_val * mat2T[(j + 6) * C1 + k];
+        sum7 += a_val * mat2T[(j + 7) * C1 + k];
+      }
+      
+      // Store results
+      result[i * C2 + j] = sum0;
+      result[i * C2 + (j + 1)] = sum1;
+      result[i * C2 + (j + 2)] = sum2;
+      result[i * C2 + (j + 3)] = sum3;
+      result[i * C2 + (j + 4)] = sum4;
+      result[i * C2 + (j + 5)] = sum5;
+      result[i * C2 + (j + 6)] = sum6;
+      result[i * C2 + (j + 7)] = sum7;
+    }
+  }
+}
+void mulMatWithUnrolledI(const double *mat1, const double *mat2T, double *result) {
+  const int UNROLL = 8;
+  memset(result, 0, sizeof(double) * R1 * C2);
+  
+  for (int i = 0; i < R1 - UNROLL + 1; i += UNROLL) {
+    for (int j = 0; j < C2; j++) {
+      double sum0 = 0, sum1 = 0, sum2 = 0, sum3 = 0;
+      double sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0;
+      
+      for (int k = 0; k < C1; k++) {
+        sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
+        sum2 += mat1[(i + 2) * C1 + k] * mat2T[j * C1 + k];
+        sum3 += mat1[(i + 3) * C1 + k] * mat2T[j * C1 + k];
+        sum4 += mat1[(i + 4) * C1 + k] * mat2T[j * C1 + k];
+        sum5 += mat1[(i + 5) * C1 + k] * mat2T[j * C1 + k];
+        sum6 += mat1[(i + 6) * C1 + k] * mat2T[j * C1 + k];
+        sum7 += mat1[(i + 7) * C1 + k] * mat2T[j * C1 + k];
+      }
+      
+      result[i * C2 + j] = sum0;
+      result[(i + 1) * C2 + j] = sum1;
+      result[(i + 2) * C2 + j] = sum2;
+      result[(i + 3) * C2 + j] = sum3;
+      result[(i + 4) * C2 + j] = sum4;
+      result[(i + 5) * C2 + j] = sum5;
+      result[(i + 6) * C2 + j] = sum6;
+      result[(i + 7) * C2 + j] = sum7;
+    }
+  }
+}
+/*
  * TODO: Partially unroll(3 of them) the loop
  */
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
@@ -152,7 +242,7 @@ void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double 
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
       for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-        // Unroll i by 2
+        // Unroll i by 8
         for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
             // Initialize sums for unrolled rows
@@ -684,7 +774,6 @@ int main() {
     std::cout << "Blocked Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
     writeMatrixToCSV(result, "data/blocked.csv", R1, C2);
 
-
     t1 = high_resolution_clock::now();
     mulMatWithUnrolledAll(mat1, transposed, result);
     t2 = high_resolution_clock::now();
@@ -696,14 +785,52 @@ int main() {
 
 
     t1 = high_resolution_clock::now();
+    mulMatWithUnrolledK(mat1, transposed, result);
+    t2 = high_resolution_clock::now();
+    ms_double = t2 - t1;
+
+    std::cout << "\nUnrolled Innermost = " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled Innermost Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "data/unrolledInnermost.csv", R1, C2);
+
+    t1 = high_resolution_clock::now();
+    mulMatWithUnrolledI(mat1, transposed, result);
+    t2 = high_resolution_clock::now();
+    ms_double = t2 - t1;
+
+    std::cout << "\nUnrolled Outermost= " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled Outermost Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "data/unrolledOutermost.csv", R1, C2);
+
+    t1 = high_resolution_clock::now();
+    mulMatWithUnrolledJ(mat1, transposed, result);
+    t2 = high_resolution_clock::now();
+    ms_double = t2 - t1;
+
+    std::cout << "\nUnrolled Middle= " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled Middle Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "data/unrolledMiddle.csv", R1, C2);
+
+
+    t1 = high_resolution_clock::now();
+    mulMatWithUnrolled(mat1, transposed, result);
+    t2 = high_resolution_clock::now();
+    ms_double = t2 - t1;
+
+    std::cout << "\nUnrolled Outer Two Time = " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled Outer Two Time Performance = " << calculateGFLOPS(ms_double.count())
+              << " GFLOPS/s\n";
+    writeMatrixToCSV(result, "data/unrolledOuterTwo.csv", R1, C2);
+
+    t1 = high_resolution_clock::now();
     mulMatWithUnrolledBlockedI(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 
-    std::cout << "\nBlocked and Unrolled Time = " << ms_double.count() << "ms\n";
-    std::cout << "Blocked and Unrolled Performance = " << calculateGFLOPS(ms_double.count())
+    std::cout << "\nUnrolled I + Blocked Time = " << ms_double.count() << "ms\n";
+    std::cout << "Unrolled I + Blocked Performance = " << calculateGFLOPS(ms_double.count())
               << " GFLOPS/s\n";
-    writeMatrixToCSV(result, "data/blockedUnrolled.csv", R1, C2);
+    writeMatrixToCSV(result, "data/unrolledIBlocked.csv", R1, C2);
 
     // Add OpenBLAS
     t1 = high_resolution_clock::now();

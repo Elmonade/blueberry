@@ -22,12 +22,11 @@ using std::chrono::milliseconds;
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 
 void multiply(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 128; // Using the optimized block size of 128
+  const int BLOCK_SIZE = 128; //In case we start using something even larger than 2048*2048
   const int UNROLL = 8; // 8 * double = 512
 
   memset(result, 0, sizeof(double) * R1 * C2);
 
-  // Parallelize the outermost two loops
   #pragma omp parallel for collapse(2)
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
