@@ -216,7 +216,10 @@ void mulMatWithUnrolledBlockedIKByEight(const double *mat1, const double *mat2T,
     }
   }
 }
-
+/*
+ *
+ * Using this on the report
+ */
 void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 128;
   const int UNROLL = 8; // 8 * double = 512
