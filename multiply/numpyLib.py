@@ -7,31 +7,18 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import numpy as np
 import time
 
-# Set higher precision to avoid rounding
-np.set_printoptions(
-    precision=5,  # Use 5 digits of precision
-    suppress=False,  # Don't suppress scientific notation
-    floatmode="fixed",  # Use fixed number of digits (not rounded)
-)
-
+# We need it to make it match with openblas's results
 def truncate_formatter(x, precision=5):
-    """Format number in scientific notation and truncate (not round) the mantissa"""
-    # Convert to scientific notation with extra precision
-    s = f"{x:.{precision+6}e}"
-    # Split into mantissa and exponent
+    s = f"{x:.{precision}e}"
     base, exp = s.split('e')
-    # Split mantissa to handle decimal point
     mantissa_parts = base.split('.')
-    # Truncate after desired precision
     if len(mantissa_parts) > 1:
         truncated = mantissa_parts[0] + '.' + mantissa_parts[1][:precision]
     else:
         truncated = mantissa_parts[0]
-    # Reconstruct scientific notation
     return f"{truncated}e{exp}"
 
 def read_matrix_from_csv(filename, size):
-    # Check if file exists
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File not found: {filename}")
     # Calculate number of elements needed (just one matrix now)
@@ -64,17 +51,20 @@ def matrix_multiply_benchmark(file_a, file_b, size=2):
         print(f"Starting benchmark with files: {file_a} and {file_b}")
         A = read_matrix_from_csv(file_a, size)
         B = read_matrix_from_csv(file_b, size)
-        print("Running warm-up multiplication...")
+        print("Warm up")
         _ = A @ B
-        print("Running timed multiplication...")
+
+        print("Timed")
         start = time.perf_counter()
         C = A @ B
         end = time.perf_counter()
+
         operations = 2 * size * size * size
         time_taken = end - start
         gflops = (operations / time_taken) / 1e9
+
         print(f"Matrix size: {size}x{size}")
-        print(f"Time taken: {time_taken:.4f} seconds")
+        print(f"Time taken: {time_taken*1000:.4f} ms")
         print(f"Performance: {gflops:.2f} GFLOPS/s")
         print("Saving result...")
         

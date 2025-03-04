@@ -10,11 +10,11 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 2048*2
-#define C1 2048*2
+#define R1 2048
+#define C1 2048
 
-#define R2 2048*2
-#define C2 2048*2
+#define R2 2048
+#define C2 2048
 
 void normal(const double *mat1, const double *mat2, double *result) {
   memset(result, 0, sizeof(double) * R1 * C2);
@@ -684,7 +684,7 @@ int main() {
     transpose(mat2, transposed);
 
     auto t1 = high_resolution_clock::now();
-    // normal(mat1, mat2, result);
+    normal(mat1, mat2, result);
     auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
 
