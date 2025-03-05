@@ -51,6 +51,7 @@ for csv_file in "$directory"/*.csv; do
     
     # Skip reference file, A.csv and B.csv
     if [ "$(realpath "$csv_file")" = "$(realpath "$reference_file")" ] || 
+       [ "$basename_file" = "plot.csv" ] || 
        [ "$basename_file" = "A.csv" ] || 
        [ "$basename_file" = "B.csv" ]; then
         continue

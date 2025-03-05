@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 double readDoubleFromCSV(const std::string &filename, double *arr, int num_doubles) {
   std::ifstream file(filename);
@@ -73,5 +74,21 @@ void writeMatrixToCSV(const double* matrix, const char* filename, int rows, int 
         }
         outFile << "\n";
     }
+    outFile.close();
+}
+
+void writePlotDataToCSV(const std::vector<PlotData>& plotData, const char* filename) {
+    std::ofstream outFile(filename);
+    if (!outFile.is_open()) {
+        std::cerr << "Failed to open " << filename << " for writing\n";
+        return;
+    }
+    
+    outFile << "Algorithm,Time_ms" << std::endl;
+    
+    for (const auto& data : plotData) {
+        outFile << data.label << "," << data.time << std::endl;
+    }
+    
     outFile.close();
 }

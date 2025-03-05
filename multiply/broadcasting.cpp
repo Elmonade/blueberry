@@ -16,6 +16,8 @@ using std::chrono::milliseconds;
 #define R2 2048
 #define C2 2048
 
+#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+
 void normal(const double *mat1, const double *mat2, double *result) {
   memset(result, 0, sizeof(double) * R1 * C2);
   for (int i = 0; i < R1; i++) {
@@ -338,7 +340,7 @@ void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double 
     }
   }
 }
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+
 void locality(const double *mat1, const double *mat2T, double *result) {
   int UNROLL = 8;
   memset(result, 0, sizeof(double) * R1 * C2);
@@ -378,7 +380,7 @@ void locality(const double *mat1, const double *mat2T, double *result) {
     }
   }
 }
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+
 void broadcastedSIMDrollFour(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 64;
   const int UNROLL = 4;
@@ -440,7 +442,7 @@ void broadcastedSIMDrollFour(const double *mat1, const double *mat2T, double *re
     }
   }
 }
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
+
 void broadcastedSIMD(const double *mat1, const double *mat2T, double *result) {
 
   const int BLOCK_SIZE = 64;
@@ -547,12 +549,6 @@ void broadcasted(const double *mat1, const double *mat2T, double *result) {
   }
 }
 
-/*
- *
- * This might be the best we can do...It was not.
- *
- */
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 void broadcastedFinal(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 64;
   const int UNROLL = 8;
@@ -704,7 +700,7 @@ int main() {
 
 
     t1 = high_resolution_clock::now();
-    mulMatWithUnrolledBlockedI(mat1, transposed, result);
+    mulMatWithUnrolledBlockedIKByEight(mat1, transposed, result);
     t2 = high_resolution_clock::now();
     ms_double = t2 - t1;
 

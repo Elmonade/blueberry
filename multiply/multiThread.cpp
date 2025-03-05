@@ -14,10 +14,10 @@ using std::chrono::milliseconds;
 #define USE_AVX 1
 #define USE_FMA 1
 
-#define R1 4096
-#define C1 4096
-#define R2 4096
-#define C2 4096
+#define R1 2048
+#define C1 2048
+#define R2 2048
+#define C2 2048
 
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 
@@ -27,10 +27,9 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
 
   memset(result, 0, sizeof(double) * R1 * C2);
 
-  #pragma omp parallel for collapse(2)
+  #pragma omp parallel for collapse(3)
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
-      
       for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
         // UNROLL
         int iLimit = std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1);
