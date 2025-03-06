@@ -1,5 +1,5 @@
-CXXFLAGS = -Wall -Wextra -march=native -fopenmp -lopenblas
-#CXXFLAGS = -Wall -Wextra -march=native -Ofast -fopenmp -lopenblas
+#CXXFLAGS = -Wall -Wextra -march=native -fopenmp -lopenblas
+CXXFLAGS = -Wall -Wextra -march=native -Ofast -fopenmp -lopenblas
 CC = g++
 VPATH = src:multiply:build
 

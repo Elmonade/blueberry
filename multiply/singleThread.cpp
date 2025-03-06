@@ -31,7 +31,7 @@ void mulMatWithCleanMemory(const double *mat1, const double *mat2, double *resul
 }
 
 void mulMatWithCleanMemoryOnTransposed(const double *mat1, const double *mat2T, double *result) {
-  memset(result, 0, sizeof(double) * R1 * C2); // Initialize all at once
+  memset(result, 0, sizeof(double) * R1 * C2);
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
       for (int k = 0; k < C1; k++) {
@@ -445,7 +445,7 @@ void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double 
 }
 
 void mulMatWithUnrolledBlockedIKSIMD(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 32;
+  const int BLOCK_SIZE = 512; // Massive performance degredation @1024
   const int UNROLL = 8; // 8 * double = 512
 
   memset(result, 0, sizeof(double) * R1 * C2);

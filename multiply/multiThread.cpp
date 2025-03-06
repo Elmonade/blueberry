@@ -11,9 +11,6 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define USE_AVX 1
-#define USE_FMA 1
-
 #define R1 2048
 #define C1 2048
 #define R2 2048
@@ -22,7 +19,7 @@ using std::chrono::milliseconds;
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 
 void multiply(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 128; //In case we start using something even larger than 2048*2048
+  const int BLOCK_SIZE = 512; //L3 = 8MiB -> 512 * 512 * 3 * double = 6MiB~
   const int UNROLL = 8; // 8 * double = 512
 
   memset(result, 0, sizeof(double) * R1 * C2);
@@ -38,7 +35,7 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
 
         for (int i = i0; i < iLimit; i += UNROLL) {
           for (int j = j0; j < jLimit; j++) {
-            // Load current values from local buffer
+            // Broadcast 0.0 to whole vector.
             __m512d sum0 = _mm512_set1_pd(0.0);
             __m512d sum1 = _mm512_set1_pd(0.0);
             __m512d sum2 = _mm512_set1_pd(0.0);
@@ -49,10 +46,6 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
             __m512d sum7 = _mm512_set1_pd(0.0);
 
             for (int k = k0; k < kLimit; k += UNROLL) {
-              // Add prefetching for upcoming data
-              //_mm_prefetch((char*)&mat2T[j * C1 + k + 64], _MM_HINT_T0);
-              //_mm_prefetch((char*)&mat1[i * C1 + k + 64], _MM_HINT_T0);
-              
               __m512d m2 = _mm512_loadu_pd(&mat2T[j * C1 + k]);
 
               __m512d m1_0 = _mm512_loadu_pd(&mat1[i * C1 + k]);
