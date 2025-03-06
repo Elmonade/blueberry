@@ -235,14 +235,14 @@ void mulMatWithUnrolledBlockedIKByEight(const double *mat1, const double *mat2T,
         for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
           for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
             // Initialize sums for unrolled rows
-            double sum0 = result[i * C2 + j];
-            double sum1 = result[(i + 1) * C2 + j];
-            double sum2 = result[(i + 2) * C2 + j];
-            double sum3 = result[(i + 3) * C2 + j];
-            double sum4 = result[(i + 4) * C2 + j];
-            double sum5 = result[(i + 5) * C2 + j];
-            double sum6 = result[(i + 6) * C2 + j];
-            double sum7 = result[(i + 7) * C2 + j];
+            double sum0 = 0.0;
+            double sum1 = 0.0;
+            double sum2 = 0.0;
+            double sum3 = 0.0;
+            double sum4 = 0.0;
+            double sum5 = 0.0;
+            double sum6 = 0.0;
+            double sum7 = 0.0;
 
             // Unroll k by 8
             for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - UNROLL + 1); k += UNROLL) {
@@ -341,14 +341,14 @@ void mulMatWithUnrolledBlockedIKByEight(const double *mat1, const double *mat2T,
             }
 
             // Store results
-            result[i * C2 + j] = sum0;
-            result[(i + 1) * C2 + j] = sum1;
-            result[(i + 2) * C2 + j] = sum2;
-            result[(i + 3) * C2 + j] = sum3;
-            result[(i + 4) * C2 + j] = sum4;
-            result[(i + 5) * C2 + j] = sum5;
-            result[(i + 6) * C2 + j] = sum6;
-            result[(i + 7) * C2 + j] = sum7;
+            result[i * C2 + j] += sum0;
+            result[(i + 1) * C2 + j] += sum1;
+            result[(i + 2) * C2 + j] += sum2;
+            result[(i + 3) * C2 + j] += sum3;
+            result[(i + 4) * C2 + j] += sum4;
+            result[(i + 5) * C2 + j] += sum5;
+            result[(i + 6) * C2 + j] += sum6;
+            result[(i + 7) * C2 + j] += sum7;
           }
         }
 
