@@ -11,8 +11,6 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
-
 #define R1 4096
 #define C1 4096
 
@@ -296,7 +294,7 @@ void mulMatWithUnrolledBlockedI(const double *mat1, const double *mat2T, double 
 }
 
 void mulMatWithUnrolledBlockedIKSIMD(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 512; // Massive performance degredation @1024
+  const int BLOCK_SIZE = 256; // Massive performance degredation @1024
   const int UNROLL = 8; // 8 * double = 512
 
   memset(result, 0, sizeof(double) * R1 * C2);
@@ -370,208 +368,7 @@ void mulMatWithUnrolledBlockedIKSIMD(const double *mat1, const double *mat2T, do
   }
 }
 
-void mulMatWithUnrolledBlockedK(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 64;
-  const int UNROLL = 8;
-
-  memset(result, 0, sizeof(double) * R1 * C2);
-
-  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
-    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
-      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-
-        for (int i = i0; i < i0 + BLOCK_SIZE; i++) {
-          for (int j = j0; j < j0 + BLOCK_SIZE; j++) {
-            double sum = 0.0;
-
-            // Unrolled k loop
-            for (int k = k0; k < k0 + BLOCK_SIZE; k += UNROLL) {
-              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
-              sum += mat1[i * C1 + k + 2] * mat2T[j * C1 + k + 2];
-              sum += mat1[i * C1 + k + 3] * mat2T[j * C1 + k + 3];
-              sum += mat1[i * C1 + k + 4] * mat2T[j * C1 + k + 4];
-              sum += mat1[i * C1 + k + 5] * mat2T[j * C1 + k + 5];
-              sum += mat1[i * C1 + k + 6] * mat2T[j * C1 + k + 6];
-              sum += mat1[i * C1 + k + 7] * mat2T[j * C1 + k + 7];
-            }
-
-            result[i * C2 + j] += sum;
-          }
-        }
-      }
-    }
-  }
-}
-
-void mulMatWithUnrolledBlockedJK(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 64;
-  const int UNROLL = 2;
-  memset(result, 0, sizeof(double) * R1 * C2);
-  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
-    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
-      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-        // Regular loop for i dimension (no unrolling)
-        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1); i++) {
-          // Unroll j by 2
-          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2 - UNROLL + 1); j += UNROLL) {
-            // Initialize sums for unrolled columns
-            double sum0 = result[i * C2 + j];
-            double sum1 = result[i * C2 + (j + 1)];
-
-            // Unroll k by 2
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
-              // For the first column
-              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum0 += mat1[i * C1 + (k + 1)] * mat2T[j * C1 + (k + 1)];
-
-              // For the second column
-              sum1 += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
-              sum1 += mat1[i * C1 + (k + 1)] * mat2T[(j + 1) * C1 + (k + 1)];
-            }
-
-            // Handle remaining k elements if C1 is not even
-            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL);
-                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
-              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum1 += mat1[i * C1 + k] * mat2T[(j + 1) * C1 + k];
-            }
-
-            // Store results
-            result[i * C2 + j] = sum0;
-            result[i * C2 + (j + 1)] = sum1;
-          }
-
-          // Handle remaining j elements
-          for (int j = ROUND_DOWN(std::min(j0 + BLOCK_SIZE, C2), UNROLL);
-               j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            double sum = result[i * C2 + j];
-
-            // Still unroll k for remaining j
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
-              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum += mat1[i * C1 + (k + 1)] * mat2T[j * C1 + (k + 1)];
-            }
-
-            // Handle remaining k elements
-            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL);
-                 k < std::min(k0 + BLOCK_SIZE, C1); k++) {
-              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
-            }
-
-            result[i * C2 + j] = sum;
-          }
-        }
-      }
-    }
-  }
-}
-
-void mulMatWithUnrolledBlocked(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 64;
-  const int UNROLL = 2;
-  memset(result, 0, sizeof(double) * R1 * C2);
-
-  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
-    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
-      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-
-        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
-          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            // Initialize sums for unrolled rows
-            double sum0 = result[i * C2 + j];
-            double sum1 = result[(i + 1) * C2 + j];
-
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += UNROLL) {
-              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
-
-              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-              sum1 += mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
-            }
-
-            // Handle remaining k elements if C1 is not even
-            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), 2); k < std::min(k0 + BLOCK_SIZE, C1);
-                 k++) {
-              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-            }
-
-            // Store results
-            result[i * C2 + j] = sum0;
-            result[(i + 1) * C2 + j] = sum1;
-          }
-        }
-
-        // Handle remaining rows that couldn't be unrolled
-        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
-             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
-          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            double sum = result[i * C2 + j];
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
-              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
-            }
-            result[i * C2 + j] = sum;
-          }
-        }
-      }
-    }
-  }
-}
-
-void mulMatBlockedWithUnrollByTwo(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 32;
-  const int UNROLL = 2;
-  memset(result, 0, sizeof(double) * R1 * C2);
-
-  for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
-    for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
-      for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-
-        for (int i = i0; i < std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1); i += UNROLL) {
-          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            // Initialize sums for unrolled rows
-            double sum0 = 0;
-            double sum1 = 0;
-
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - 1); k += 2) {
-              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum0 += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
-
-              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-              sum1 += mat1[(i + 1) * C1 + k + 1] * mat2T[j * C1 + k + 1];
-            }
-
-            // Handle remaining k elements if C1 is not even
-            for (int k = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), 2); k < std::min(k0 + BLOCK_SIZE, C1);
-                 k++) {
-              sum0 += mat1[i * C1 + k] * mat2T[j * C1 + k];
-              sum1 += mat1[(i + 1) * C1 + k] * mat2T[j * C1 + k];
-            }
-
-            // Store results
-            result[i * C2 + j] = sum0;
-            result[(i + 1) * C2 + j] = sum1;
-          }
-        }
-
-        // Handle remaining rows that couldn't be unrolled
-        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL);
-             i < std::min(i0 + BLOCK_SIZE, R1); i++) {
-          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            double sum = result[i * C2 + j];
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
-              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
-            }
-            result[i * C2 + j] = sum;
-          }
-        }
-      }
-    }
-  }
-}
-
-void transpose(double *ogMat, double *tpMat) {
+void transpose(const double *ogMat, double *tpMat) {
   memset(tpMat, 0, sizeof(double) * R2 * C2);
   int cnt = 0;
   for (int i = 0; i < C2; i++) {
@@ -582,23 +379,23 @@ void transpose(double *ogMat, double *tpMat) {
   }
 }
 
-double calculateGFLOPS(double milliseconds) {
-  double seconds = milliseconds / 1000.0;
-  double operations = 2.0 * R1 * C2 * C1; // 2 operations per multiply-add
+double calculateGFLOPS(const double milliseconds) {
+  const double seconds = milliseconds / 1000.0;
+  constexpr double operations = 2.0 * R1 * C2 * C1; // 2 operations per multiply-add
   return (operations / seconds) / 1e9; // Convert to GFLOPS
 }
 
 int main() {
   try {
-    const size_t matrix1_size = (long long) R1 * C1;
-    const size_t matrix2_size = (long long) R2 * C2;
-    const size_t result_size = (long long) R1 * C2;
+    constexpr size_t matrix1_size = static_cast<long long>(R1) * C1;
+    constexpr size_t matrix2_size = static_cast<long long>(R2) * C2;
+    constexpr size_t result_size = static_cast<long long>(R1) * C2;
 
     // Allocate arrays on heap
-    double *mat1 = new double[matrix1_size];
-    double *mat2 = new double[matrix2_size];
-    double *result = new double[result_size];
-    double *transposed = new double[matrix2_size];
+    auto *mat1 = new double[matrix1_size];
+    const auto mat2 = new double[matrix2_size];
+    const auto result = new double[result_size];
+    const auto transposed = new double[matrix2_size];
     std::vector<PlotData> plot;
 
     if (readDoubleFromCSV("data/A.csv", mat1, matrix1_size) != matrix1_size) {
@@ -621,9 +418,8 @@ int main() {
 
     transpose(mat2, transposed);
 
-    /*
-     * Benchmark
-     */
+    // Benchmark
+
     auto t1 = high_resolution_clock::now();
     mulMatWithCleanMemory(mat1, mat2, result);
     auto t2 = high_resolution_clock::now();

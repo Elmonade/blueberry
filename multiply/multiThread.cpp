@@ -16,28 +16,22 @@ using std::chrono::milliseconds;
 #define R2 4096
 #define C2 4096
 
-#define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
-
 void multiply(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 1024; //L3 = 8MiB -> 512 * 512 * 3 * double = 6MiB~
+  const int BLOCK_SIZE = 256; //L3 = 8MiB -> 512 * 512 * 3 * double = 6MiB~
   const int UNROLL = 8; // 8 * double = 512
-  
+
   std::cout << "BLOCK_SIZE: " << BLOCK_SIZE;
 
   memset(result, 0, sizeof(double) * R1 * C2);
 
   #pragma omp parallel for collapse(3)
-
+  //BLOCK
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
       for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
-        // UNROLL
-        int iLimit = std::min(i0 + BLOCK_SIZE, R1 - UNROLL + 1);
-        int jLimit = std::min(j0 + BLOCK_SIZE, C2);
-        int kLimit = std::min(k0 + BLOCK_SIZE, C1 - UNROLL + 1);
-
-        for (int i = i0; i < iLimit; i += UNROLL) {
-          for (int j = j0; j < jLimit; j++) {
+        //UNROLL
+        for (int i = i0; i < i0 + BLOCK_SIZE; i += UNROLL) {
+          for (int j = j0; j < j0 + BLOCK_SIZE; j++) {
             // Broadcast 0.0 to whole vector.
             __m512d sum0 = _mm512_set1_pd(0.0);
             __m512d sum1 = _mm512_set1_pd(0.0);
@@ -48,7 +42,7 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
             __m512d sum6 = _mm512_set1_pd(0.0);
             __m512d sum7 = _mm512_set1_pd(0.0);
 
-            for (int k = k0; k < kLimit; k += UNROLL) {
+            for (int k = k0; k < k0 + BLOCK_SIZE; k += UNROLL) {
               __m512d m2 = _mm512_loadu_pd(&mat2T[j * C1 + k]);
 
               __m512d m1_0 = _mm512_loadu_pd(&mat1[i * C1 + k]);
@@ -86,21 +80,6 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
             double hsum6 = _mm512_reduce_add_pd(sum6);
             double hsum7 = _mm512_reduce_add_pd(sum7);
 
-            // Handle remaining k values that couldn't be vectorized
-            int kRemainderLimit = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL);
-            for (int k = kRemainderLimit; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
-              double m2_val = mat2T[j * C1 + k];
-
-              hsum0 += mat1[i * C1 + k] * m2_val;
-              hsum1 += mat1[(i + 1) * C1 + k] * m2_val;
-              hsum2 += mat1[(i + 2) * C1 + k] * m2_val;
-              hsum3 += mat1[(i + 3) * C1 + k] * m2_val;
-              hsum4 += mat1[(i + 4) * C1 + k] * m2_val;
-              hsum5 += mat1[(i + 5) * C1 + k] * m2_val;
-              hsum6 += mat1[(i + 6) * C1 + k] * m2_val;
-              hsum7 += mat1[(i + 7) * C1 + k] * m2_val;
-            }
-
             // Store to local buffer
             result[i * C2 + j] += hsum0;
             result[(i + 1) * C2 + j] += hsum1;
@@ -110,30 +89,6 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
             result[(i + 5) * C2 + j] += hsum5;
             result[(i + 6) * C2 + j] += hsum6;
             result[(i + 7) * C2 + j] += hsum7;
-          }
-        }
-
-        // Handle remaining rows that couldn't be unrolled
-        for (int i = ROUND_DOWN(std::min(i0 + BLOCK_SIZE, R1), UNROLL); i < std::min(i0 + BLOCK_SIZE, R1); i++) {
-          for (int j = j0; j < std::min(j0 + BLOCK_SIZE, C2); j++) {
-            // Use scalar operations for remaining rows
-            double sum = result[i * C2 + j];
-
-            // Try to vectorize k loops even for remaining rows
-            for (int k = k0; k < std::min(k0 + BLOCK_SIZE, C1 - UNROLL + 1); k += UNROLL) {
-              __m512d m1 = _mm512_loadu_pd(&mat1[i * C1 + k]);
-              __m512d m2 = _mm512_loadu_pd(&mat2T[j * C1 + k]);
-              __m512d prod = _mm512_mul_pd(m1, m2);
-              sum += _mm512_reduce_add_pd(prod);
-            }
-
-            // Handle remaining k values
-            int k_limit = ROUND_DOWN(std::min(k0 + BLOCK_SIZE, C1), UNROLL);
-            for (int k = k_limit; k < std::min(k0 + BLOCK_SIZE, C1); k++) {
-              sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
-            }
-
-            result[i * C2 + j] = sum;
           }
         }
       }
