@@ -13,11 +13,11 @@ using std::chrono::milliseconds;
 
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 
-#define R1 2048
-#define C1 2048
+#define R1 4096
+#define C1 4096
 
-#define R2 2048
-#define C2 2048
+#define R2 4096
+#define C2 4096
 
 void mulMatWithCleanMemory(const double *mat1, const double *mat2, double *result) {
   memset(result, 0, sizeof(double) * R1 * C2);
@@ -46,16 +46,18 @@ void mulMatWithUnrolledK(const double *mat1, const double *mat2T, double *result
   memset(result, 0, sizeof(double) * R1 * C2);
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
+      double sum = 0;
       for (int k = 0; k < C1; k += UNROLL) {
-        result[i * C2 + j] += mat1[i * C1 + k] * mat2T[j * C1 + k];
-        result[i * C2 + j] += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
-        result[i * C2 + j] += mat1[i * C1 + k + 2] * mat2T[j * C1 + k + 2];
-        result[i * C2 + j] += mat1[i * C1 + k + 3] * mat2T[j * C1 + k + 3];
-        result[i * C2 + j] += mat1[i * C1 + k + 4] * mat2T[j * C1 + k + 4];
-        result[i * C2 + j] += mat1[i * C1 + k + 5] * mat2T[j * C1 + k + 5];
-        result[i * C2 + j] += mat1[i * C1 + k + 6] * mat2T[j * C1 + k + 6];
-        result[i * C2 + j] += mat1[i * C1 + k + 7] * mat2T[j * C1 + k + 7];
+        sum += mat1[i * C1 + k] * mat2T[j * C1 + k];
+        sum += mat1[i * C1 + k + 1] * mat2T[j * C1 + k + 1];
+        sum += mat1[i * C1 + k + 2] * mat2T[j * C1 + k + 2];
+        sum += mat1[i * C1 + k + 3] * mat2T[j * C1 + k + 3];
+        sum += mat1[i * C1 + k + 4] * mat2T[j * C1 + k + 4];
+        sum += mat1[i * C1 + k + 5] * mat2T[j * C1 + k + 5];
+        sum += mat1[i * C1 + k + 6] * mat2T[j * C1 + k + 6];
+        sum += mat1[i * C1 + k + 7] * mat2T[j * C1 + k + 7];
       }
+      result[i * C2 + j] = sum;
     }
   }
 }

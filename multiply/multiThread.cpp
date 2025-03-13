@@ -11,16 +11,18 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 2048
-#define C1 2048
-#define R2 2048
-#define C2 2048
+#define R1 4096
+#define C1 4096
+#define R2 4096
+#define C2 4096
 
 #define ROUND_DOWN(x, s) ((x) & ~((s) - 1))
 
 void multiply(const double *mat1, const double *mat2T, double *result) {
-  const int BLOCK_SIZE = 512; //L3 = 8MiB -> 512 * 512 * 3 * double = 6MiB~
+  const int BLOCK_SIZE = 1024; //L3 = 8MiB -> 512 * 512 * 3 * double = 6MiB~
   const int UNROLL = 8; // 8 * double = 512
+  
+  std::cout << "BLOCK_SIZE: " << BLOCK_SIZE;
 
   memset(result, 0, sizeof(double) * R1 * C2);
 
