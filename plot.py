@@ -28,7 +28,7 @@ plt.grid(axis="x", linestyle="--", alpha=0.7)
 plt.tight_layout()
 
 # Show plot
-plt.savefig("matrix_performance_Ofast.png", dpi=300)
+plt.savefig("matrix_performance_NoO.png", dpi=300)
 plt.show()
 
 # Log scale
@@ -50,7 +50,7 @@ plt.grid(axis="x", linestyle="--", alpha=0.7)
 for i, v in enumerate(df_sorted["Time_ms"]):
     plt.text(v * 1.1, i, f"{v:.1f} ms", va="center", fontsize=9)
 plt.tight_layout()
-plt.savefig("matrix_performance_log_Ofast.png", dpi=300)
+plt.savefig("matrix_performance_log_NoO.png", dpi=300)
 plt.show()
 
 # Calculate speedup relative to the baseline
@@ -79,5 +79,5 @@ plt.ylabel("Algorithm", fontsize=12)
 plt.axvline(x=1, color="black", linestyle="--", alpha=0.7)
 plt.grid(axis="x", linestyle="--", alpha=0.7)
 plt.tight_layout()
-plt.savefig("matrix_speedup_Ofast.png", dpi=300)
+plt.savefig("matrix_speedup_NoO.png", dpi=300)
 plt.show()

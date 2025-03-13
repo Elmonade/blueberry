@@ -25,6 +25,7 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
   memset(result, 0, sizeof(double) * R1 * C2);
 
   #pragma omp parallel for collapse(3)
+
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {
       for (int k0 = 0; k0 < C1; k0 += BLOCK_SIZE) {
