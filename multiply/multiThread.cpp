@@ -13,6 +13,7 @@ using std::chrono::milliseconds;
 
 #define R1 4096
 #define C1 4096
+
 #define R2 4096
 #define C2 4096
 
@@ -20,11 +21,9 @@ void multiply(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 256; //L3 = 8MiB -> 512 * 512 * 3 * double = 6MiB~
   const int UNROLL = 8; // 8 * double = 512
 
-  std::cout << "BLOCK_SIZE: " << BLOCK_SIZE;
-
   memset(result, 0, sizeof(double) * R1 * C2);
 
-  #pragma omp parallel for collapse(3)
+  #pragma omp parallel for collapse(2)
   //BLOCK
   for (int i0 = 0; i0 < R1; i0 += BLOCK_SIZE) {
     for (int j0 = 0; j0 < C2; j0 += BLOCK_SIZE) {

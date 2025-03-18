@@ -18,7 +18,9 @@ using std::chrono::milliseconds;
 #define C2 4096
 
 void mulMatWithCleanMemory(const double *mat1, const double *mat2, double *result) {
+
   memset(result, 0, sizeof(double) * R1 * C2);
+
   for (int i = 0; i < R1; i++) {
     for (int j = 0; j < C2; j++) {
       for (int k = 0; k < C1; k++) {
