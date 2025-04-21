@@ -12,5 +12,6 @@ struct PlotData {
 double readDoubleFromCSV(const std::string &filename, double* arr, int num_doubles);
 void writeMatrixToCSV(const double* matrix, const char* filename, int rows, int cols);
 void writePlotDataToCSV(const std::vector<PlotData>& plotData, const char* filename);
+void writeTimingToCSV(const std::string& filename, double timeA, double timeB);
 
 #endif
