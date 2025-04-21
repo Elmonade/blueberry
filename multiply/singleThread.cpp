@@ -11,14 +11,13 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 4096
-#define C1 4096
+#define R1 2048
+#define C1 2048
 
-#define R2 4096
-#define C2 4096
+#define R2 2048
+#define C2 2048
 
 void mulMatWithCleanMemory(const double *mat1, const double *mat2, double *result) {
-
   memset(result, 0, sizeof(double) * R1 * C2);
 
   for (int i = 0; i < R1; i++) {
