@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("data/plot.csv")
+df = pd.read_csv("data/time.csv")
 
 plt.figure(figsize=(12, 8))
 
