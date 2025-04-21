@@ -92,3 +92,23 @@ void writePlotDataToCSV(const std::vector<PlotData>& plotData, const char* filen
     
     outFile.close();
 }
+
+// Add this function to write timing info to CSV (appends data)
+void writeTimingToCSV(const std::string& filename, double timeA, double timeB) {
+  bool fileExists = false;
+  std::ifstream checkFile(filename);
+  fileExists = checkFile.good();
+  
+  std::ofstream file(filename, std::ios::app);
+  if (!file.is_open()) {
+    std::cerr << "Error opening " << filename << " for writing\n";
+    return;
+  }
+
+  if (!fileExists)
+    file << "Custom,OpenBLAS\n";
+
+  file << timeA << "," << timeB << "\n";
+  
+  file.close();
+}

@@ -1,3 +1,5 @@
 #Ignore data files.
 data
 .idea
+cmake-build-debug
+

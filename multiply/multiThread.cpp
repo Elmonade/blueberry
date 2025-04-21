@@ -4,18 +4,17 @@
 #include <immintrin.h>
 #include <iostream>
 #include <omp.h>
-#include <vector>
 #include "read.h"
 
 using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-#define R1 4096
-#define C1 4096
+#define R1 2048
+#define C1 2048
 
-#define R2 4096
-#define C2 4096
+#define R2 2048
+#define C2 2048
 
 void multiply(const double *mat1, const double *mat2T, double *result) {
   const int BLOCK_SIZE = 256;
@@ -151,7 +150,8 @@ int main() {
     auto t2 = high_resolution_clock::now();
     duration<double, std::milli> ms_double = t2 - t1;
 
-    std::cout << "\nCustom Multiplication Time = " << ms_double.count() << "ms\n";
+    double custom_time = ms_double.count();
+    std::cout << "\nCustom Multiplication Time = " << custom_time << "ms\n";
     std::cout << "Custom Multiplication Performance = " << calculateGFLOPS(ms_double.count())
               << " GFLOPS/s\n";
     writeMatrixToCSV(result, "data/multiThread.csv", R1, C2);
@@ -178,6 +178,8 @@ int main() {
     std::cout << "\nOpenBLAS Time = " << ms_double.count() << "ms\n";
     std::cout << "OpenBLAS Performance = " << calculateGFLOPS(ms_double.count()) << " GFLOPS/s\n";
     writeMatrixToCSV(result, "data/openblasMult.csv", R1, C2);
+
+    writeTimingToCSV("data/time.csv", custom_time, ms_double.count());
 
     // Clean up
     delete[] mat1;
