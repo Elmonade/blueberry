@@ -1,5 +1,5 @@
 # blueberry
-Parallel Computing Assignment 1.
+Parallel Computing - CPU
 
 #### Problem 1
 Simple matrix multiplicatoin.
